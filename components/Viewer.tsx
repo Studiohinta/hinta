@@ -12,6 +12,9 @@ import { ChevronRightIcon } from './icons/ChevronRightIcon';
 import { StarIcon } from './icons/StarIcon';
 import { DownloadIcon } from './icons/DownloadIcon';
 import { ChatBubbleIcon } from './icons/ChatBubbleIcon';
+import { HomeIcon } from './icons/HomeIcon';
+import { MapIcon } from './icons/MapIcon';
+import { MagnifyingGlassIcon } from './icons/MagnifyingGlassIcon';
 
 interface ViewerProps {
   project: Project;
@@ -46,6 +49,11 @@ export const Viewer: React.FC<ViewerProps> = ({
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
   const [highlightedHotspotIds, setHighlightedHotspotIds] = useState<string[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [activeNavTab, setActiveNavTab] = useState<string>('home');
+  const [showNavigationModal, setShowNavigationModal] = useState(false);
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -59,6 +67,13 @@ export const Viewer: React.FC<ViewerProps> = ({
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
+
+  // Update active tab when navigating to root view
+  useEffect(() => {
+    if (currentView.parentId === null) {
+      setActiveNavTab('home');
+    }
+  }, [currentView.parentId]);
 
   // Initialize and update the zoom scale based on image and container dimensions
   const updateInitialTransform = useCallback(() => {
@@ -80,10 +95,14 @@ export const Viewer: React.FC<ViewerProps> = ({
   useEffect(() => {
     const img = imgRef.current;
     if (img) {
+      // Only reset image loaded state - keep transform to avoid zoom jump
+      setIsImageLoaded(false);
+      
       const handleLoad = () => {
         // Small delay to ensure naturalWidth/Height are set
         setTimeout(() => {
           updateInitialTransform();
+          setIsImageLoaded(true);
         }, 10);
       };
       
@@ -229,7 +248,7 @@ export const Viewer: React.FC<ViewerProps> = ({
     const cardWidth = Math.min(200, window.innerWidth * 0.4); // Max 200px, or 40% of screen width
     const cardHeight = 180; // Fixed height
     const padding = 12; // Reduced padding for mobile
-    const minDistanceFromHotspot = 40; // Reduced distance for more natural placement near hotspot
+    const minDistanceFromHotspot = 12; // Allow much closer placement while staying outside the active hotspot
     
     // Get hotspot bounds from the hovered hotspot
     const hoveredHotspot = currentViewHotspots.find(h => h.id === hoveredHotspotId);
@@ -667,7 +686,11 @@ export const Viewer: React.FC<ViewerProps> = ({
             }}
           />
           <svg 
-            className="absolute top-0 left-0 w-full h-full pointer-events-auto"
+            className="absolute top-0 left-0 w-full h-full pointer-events-auto transition-opacity duration-500 ease-out"
+            style={{ 
+              opacity: isImageLoaded && transform.scale > 0.001 ? 1 : 0,
+              pointerEvents: isImageLoaded && transform.scale > 0.001 ? 'auto' : 'none'
+            }}
             viewBox={`0 0 ${imgRef.current?.naturalWidth || 100} ${imgRef.current?.naturalHeight || 100}`}
           >
             {currentViewHotspots.map(hs => {
@@ -720,6 +743,8 @@ export const Viewer: React.FC<ViewerProps> = ({
               const absX = (x / 100) * (imgRef.current?.naturalWidth || 100);
               const absY = (y / 100) * (imgRef.current?.naturalHeight || 100);
               const isHovered = hoveredHotspotId === hs.id;
+              // Use fixed size in SVG coordinates - SVG is already scaled by transform.scale on the parent div
+              // No need to compensate, just use fixed pixel values in SVG coordinate space
               const iconSize = 24;
               const circleRadius = 20;
               return (
@@ -922,6 +947,349 @@ export const Viewer: React.FC<ViewerProps> = ({
                     </div>
                 </div>
             </div>
+        </div>
+      )}
+
+      {/* Bottom Navigation Bar - Glassmorphism Style */}
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-md w-[calc(100%-3rem)]">
+        <div 
+          className="glass-panel rounded-[2rem] px-2 py-3 shadow-2xl"
+          style={{
+            background: isDarkMode 
+              ? 'rgba(26, 26, 26, 0.7)' 
+              : 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            border: isDarkMode 
+              ? '1px solid rgba(255, 255, 255, 0.1)' 
+              : '1px solid rgba(255, 255, 255, 0.3)',
+          }}
+        >
+          <div className="flex items-center justify-around">
+            {/* Start */}
+            <button
+              onClick={() => {
+                const rootView = allProjectViews.find(v => v.parentId === null);
+                if (rootView) {
+                  onNavigate(rootView.id);
+                  setActiveNavTab('home');
+                }
+              }}
+              className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 relative group min-w-[60px]"
+            >
+              <div className={`absolute inset-0 rounded-2xl transition-all duration-200 ${
+                activeNavTab === 'home' 
+                  ? isDarkMode 
+                    ? 'bg-white/10' 
+                    : 'bg-gray-100/80'
+                  : ''
+              }`} />
+              <HomeIcon className={`w-5 h-5 relative z-10 transition-colors ${
+                activeNavTab === 'home'
+                  ? 'text-brand-primary dark:text-white'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`} />
+              <span className={`text-[10px] font-black relative z-10 transition-colors ${
+                activeNavTab === 'home'
+                  ? 'text-brand-primary dark:text-white'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`}>
+                Start
+              </span>
+            </button>
+
+            {/* Navigering */}
+            <button
+              onClick={() => {
+                setShowNavigationModal(true);
+                setActiveNavTab('navigation');
+              }}
+              className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 relative group min-w-[60px]"
+            >
+              <div className={`absolute inset-0 rounded-2xl transition-all duration-200 ${
+                activeNavTab === 'navigation' 
+                  ? isDarkMode 
+                    ? 'bg-white/10' 
+                    : 'bg-gray-100/80'
+                  : ''
+              }`} />
+              <MapIcon className={`w-5 h-5 relative z-10 transition-colors ${
+                activeNavTab === 'navigation'
+                  ? 'text-brand-primary dark:text-white'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`} />
+              <span className={`text-[10px] font-black relative z-10 transition-colors ${
+                activeNavTab === 'navigation'
+                  ? 'text-brand-primary dark:text-white'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`}>
+                Navigering
+              </span>
+            </button>
+
+            {/* Galleri */}
+            <button
+              onClick={() => {
+                setShowGalleryModal(true);
+                setActiveNavTab('gallery');
+              }}
+              className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 relative group min-w-[60px]"
+            >
+              <div className={`absolute inset-0 rounded-2xl transition-all duration-200 ${
+                activeNavTab === 'gallery' 
+                  ? isDarkMode 
+                    ? 'bg-white/10' 
+                    : 'bg-gray-100/80'
+                  : ''
+              }`} />
+              <GalleryIcon className={`w-5 h-5 relative z-10 transition-colors ${
+                activeNavTab === 'gallery'
+                  ? 'text-brand-primary dark:text-white'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`} />
+              <span className={`text-[10px] font-black relative z-10 transition-colors ${
+                activeNavTab === 'gallery'
+                  ? 'text-brand-primary dark:text-white'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`}>
+                Galleri
+              </span>
+            </button>
+
+            {/* Solstudie */}
+            <button
+              disabled
+              className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 relative group min-w-[60px] opacity-50 cursor-not-allowed"
+            >
+              <div className="absolute inset-0 rounded-2xl" />
+              <SunIcon className="w-5 h-5 relative z-10 text-gray-400 dark:text-gray-500" />
+              <span className="text-[10px] font-black relative z-10 text-gray-400 dark:text-gray-500">
+                Solstudie
+              </span>
+            </button>
+
+            {/* Sök */}
+            <button
+              onClick={() => {
+                setShowSearchModal(true);
+                setActiveNavTab('search');
+              }}
+              className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 relative group min-w-[60px]"
+            >
+              <div className={`absolute inset-0 rounded-2xl transition-all duration-200 ${
+                activeNavTab === 'search' 
+                  ? isDarkMode 
+                    ? 'bg-white/10' 
+                    : 'bg-gray-100/80'
+                  : ''
+              }`} />
+              <MagnifyingGlassIcon className={`w-5 h-5 relative z-10 transition-colors ${
+                activeNavTab === 'search'
+                  ? 'text-brand-primary dark:text-white'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`} />
+              <span className={`text-[10px] font-black relative z-10 transition-colors ${
+                activeNavTab === 'search'
+                  ? 'text-brand-primary dark:text-white'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`}>
+                Sök
+              </span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Navigation Modal - Breadcrumb/Hierarchy */}
+      {showNavigationModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-end animate-fadeIn"
+          onClick={() => {
+            setShowNavigationModal(false);
+            setActiveNavTab('home');
+          }}
+        >
+          <div 
+            className="w-full bg-white dark:bg-gray-900 rounded-t-3xl p-6 max-h-[70vh] overflow-y-auto animate-slideInUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Navigering</h2>
+              <button
+                onClick={() => {
+                  setShowNavigationModal(false);
+                  setActiveNavTab('home');
+                }}
+                className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+              >
+                <CloseIcon className="w-6 h-6" />
+              </button>
+            </div>
+            
+            {project.navigationMapImageUrl ? (
+              <div className="mb-6 rounded-2xl overflow-hidden">
+                <img 
+                  src={project.navigationMapImageUrl} 
+                  alt="Navigation Map" 
+                  className="w-full h-auto"
+                />
+              </div>
+            ) : null}
+            
+            <div className="space-y-2">
+              {(() => {
+                const breadcrumbs: View[] = [];
+                let current: View | undefined = currentView;
+                while (current) {
+                  breadcrumbs.unshift(current);
+                  current = current.parentId ? allProjectViews.find(v => v.id === current.parentId) : undefined;
+                }
+                return breadcrumbs.map((view, index) => (
+                  <button
+                    key={view.id}
+                    onClick={() => {
+                      onNavigate(view.id);
+                      setShowNavigationModal(false);
+                      setActiveNavTab('home');
+                    }}
+                    className={`w-full text-left p-4 rounded-2xl transition-all ${
+                      view.id === currentView.id
+                        ? 'bg-brand-primary/10 dark:bg-white/10 text-brand-primary dark:text-white font-black border-2 border-brand-primary dark:border-white'
+                        : 'bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {index > 0 && <ChevronRightIcon className="w-4 h-4 text-gray-400" />}
+                      <span>{view.title}</span>
+                    </div>
+                  </button>
+                ));
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gallery Modal */}
+      {showGalleryModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-end animate-fadeIn"
+          onClick={() => {
+            setShowGalleryModal(false);
+            setActiveNavTab('home');
+          }}
+        >
+          <div 
+            className="w-full bg-white dark:bg-gray-900 rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto animate-slideInUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Galleri</h2>
+              <button
+                onClick={() => {
+                  setShowGalleryModal(false);
+                  setActiveNavTab('home');
+                }}
+                className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+              >
+                <CloseIcon className="w-6 h-6" />
+              </button>
+            </div>
+            
+            {project.assets && project.assets.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {project.assets.map((asset) => (
+                  <div
+                    key={asset.id}
+                    className="relative group rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 aspect-square cursor-pointer hover:scale-105 transition-transform duration-300"
+                  >
+                    {asset.type === 'image' || asset.type === 'panorama' || asset.type === 'floorplan' ? (
+                      <img 
+                        src={asset.thumbnailUrl || asset.url} 
+                        alt={asset.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <DownloadIcon className="w-12 h-12 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <p className="text-white font-black text-sm">{asset.title}</p>
+                        {asset.description && (
+                          <p className="text-white/80 text-xs mt-1">{asset.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                <GalleryIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p className="font-bold">Inga bilder i galleriet ännu</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Search Modal - Unit List */}
+      {showSearchModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-end animate-fadeIn"
+          onClick={() => {
+            setShowSearchModal(false);
+            setActiveNavTab('home');
+          }}
+        >
+          <div 
+            className="w-full bg-white dark:bg-gray-900 rounded-t-3xl p-6 max-h-[70vh] overflow-y-auto animate-slideInUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Lägenheter</h2>
+              <button
+                onClick={() => {
+                  setShowSearchModal(false);
+                  setActiveNavTab('home');
+                }}
+                className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+              >
+                <CloseIcon className="w-6 h-6" />
+              </button>
+            </div>
+            
+            {allProjectUnits.length > 0 ? (
+              <div className="space-y-3">
+                {allProjectUnits.map(unit => (
+                  <button
+                    key={unit.id}
+                    onClick={() => {
+                      setSelectedUnitId(unit.id);
+                      setShowSearchModal(false);
+                      setActiveNavTab('home');
+                    }}
+                    className="w-full text-left p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-black text-gray-900 dark:text-white text-lg">{unit.name}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-bold mt-1">{unit.size} kvm • {unit.rooms} rok</p>
+                      </div>
+                      <p className="font-black text-brand-accent text-lg">{unit.price.toLocaleString()} SEK</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                <MagnifyingGlassIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p className="font-bold">Inga lägenheter tillgängliga</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -190,6 +190,33 @@
         width: 300px;
         height: 300px;
       }
+
+      /* Animations */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes slideInUp {
+        from {
+          transform: translateY(100%);
+        }
+        to {
+          transform: translateY(0);
+        }
+      }
+
+      .animate-fadeIn {
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      .animate-slideInUp {
+        animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      }
     </style>
     <script type="importmap">
     {
