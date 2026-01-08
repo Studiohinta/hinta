@@ -190,6 +190,17 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   };
   
   const handleMapClick = (e: MouseEvent) => {
+    // Don't handle clicks if the click originated from a button or interactive element
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('a') || target.closest('[role="button"]') || target.closest('aside') || target.closest('.sidebar')) {
+      return;
+    }
+    
+    // Also check if the event was stopped from propagating
+    if (e.defaultPrevented) {
+      return;
+    }
+    
     if (!isDrawing) return;
     const coords = getRelativeCoords(e);
     if(coords) {
@@ -252,8 +263,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     if (hotspot.type === 'info' || hotspot.type === 'camera') {
         if (hotspot.coordinates.length === 0) return null;
         const absCoord = relativeToAbsolute(hotspot.coordinates[0]);
-        const radius = 16 / transform.scale;
-        const iconSize = 20 / transform.scale;
+        const radius = 20 / transform.scale;
+        const iconSize = 24 / transform.scale;
 
         return (
             <g 
@@ -283,8 +294,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                     stroke={isSelected ? "#3b82f6" : "rgba(0, 0, 0, 0.2)"}
                     strokeWidth={1.5 / transform.scale}
                 />
-                {hotspot.type === 'info' && <InfoIcon className="text-gray-800" width={iconSize} height={iconSize} x={-iconSize/2} y={-iconSize/2} />}
-                {hotspot.type === 'camera' && <CameraIcon className="text-gray-800" width={iconSize} height={iconSize} x={-iconSize/2} y={-iconSize/2} />}
+                <g transform={`translate(-${iconSize/2}, -${iconSize/2})`}>
+                    {hotspot.type === 'info' && <InfoIcon className="text-gray-800" width={iconSize} height={iconSize} />}
+                    {hotspot.type === 'camera' && <CameraIcon className="text-gray-800" width={iconSize} height={iconSize} />}
+                </g>
             </g>
         )
     }
@@ -301,6 +314,22 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
         onClick={handleMapClick}
+        onMouseDownCapture={(e) => {
+          // Prevent map interactions when clicking on buttons or sidebar
+          const target = e.target as HTMLElement;
+          if (target.closest('button') || target.closest('aside') || target.closest('.sidebar')) {
+            e.stopPropagation();
+            e.preventDefault();
+          }
+        }}
+        onClickCapture={(e) => {
+          // Also prevent in capture phase for clicks
+          const target = e.target as HTMLElement;
+          if (target.closest('button') || target.closest('aside') || target.closest('.sidebar')) {
+            e.stopPropagation();
+            e.preventDefault();
+          }
+        }}
     >
       {imageUrl ? (
         <div 

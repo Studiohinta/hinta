@@ -263,7 +263,14 @@ export const ProjectsList: React.FC<ProjectsListProps> = ({ projects, views, hot
                     const thumbnailUrl = projectViews.find(v => v.parentId === null)?.imageURL;
                     return (
                         <div key={project.id} className="glass-card rounded-[2.5rem] flex flex-col group overflow-hidden border border-white/20 dark:border-white/5">
-                            <div className="relative h-56 overflow-hidden cursor-pointer" onClick={() => onSelectProject(project.id)}>
+                            <div 
+                                className="relative h-56 overflow-hidden cursor-pointer" 
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onSelectProject(project.id);
+                                }}
+                            >
                                 {thumbnailUrl ? (
                                     <img src={thumbnailUrl} alt={project.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                 ) : (
@@ -279,7 +286,14 @@ export const ProjectsList: React.FC<ProjectsListProps> = ({ projects, views, hot
                                 </div>
                             </div>
                             <div className="p-7 flex-grow flex flex-col">
-                                <div onClick={() => onSelectProject(project.id)} className="cursor-pointer mb-4">
+                                <div 
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onSelectProject(project.id);
+                                    }} 
+                                    className="cursor-pointer mb-4"
+                                >
                                     <h2 className="text-xl font-bold text-brand-primary dark:text-white truncate group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors uppercase tracking-tight">{project.name}</h2>
                                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">{project.description}</p>
                                 </div>

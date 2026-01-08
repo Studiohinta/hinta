@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Hotspot, HotspotStatus, Coordinate, View, Project, Unit, HotspotType } from '../types';
 import { InteractiveMap } from './InteractiveMap';
 import { HotspotEditor } from './HotspotEditor';
@@ -106,37 +106,73 @@ export const Editor: React.FC<EditorProps> = ({
   const [hotspotToDelete, setHotspotToDelete] = useState<Hotspot | null>(null);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // Track previous view.id to only reset when it actually changes
+  const prevViewIdRef = useRef<string>(view.id);
 
-  const resetViewState = useCallback(() => {
-    resetHotspotsHistory(viewHotspots);
-    setSelectedHotspotId(null);
-    setIsDrawing(false);
-    setDrawingPoints([]);
-    setFitViewToggle(v => !v); // Trigger fit-to-screen
-  }, [viewHotspots, resetHotspotsHistory]);
-
+  // Reset view state when view.id changes, but only if not drawing
   useEffect(() => {
-    resetViewState();
-  }, [view.id, resetViewState]);
+    // Only reset if view.id actually changed
+    if (prevViewIdRef.current !== view.id) {
+      // Update the ref immediately
+      prevViewIdRef.current = view.id;
+      
+      // Only reset if we're not currently drawing
+      if (!isDrawingRef.current && !startDrawingRef.current) {
+        resetHotspotsHistory(viewHotspots);
+        setSelectedHotspotId(null);
+        setIsDrawing(false);
+        isDrawingRef.current = false;
+        setDrawingPoints([]);
+        setFitViewToggle(v => !v);
+      }
+    }
+  }, [view.id, viewHotspots, resetHotspotsHistory]);
 
   const selectedHotspot = useMemo(
     () => hotspots.find(h => h.id === selectedHotspotId),
     [hotspots, selectedHotspotId]
   );
 
-  const startDrawing = () => {
+  const startDrawingRef = useRef(false);
+  const isDrawingRef = useRef(false);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    isDrawingRef.current = isDrawing;
+  }, [isDrawing]);
+  
+  const startDrawing = useCallback((e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.nativeEvent.stopImmediatePropagation();
+    }
+    
+    // Set flag to prevent immediate deactivation
+    startDrawingRef.current = true;
+    isDrawingRef.current = true;
+    
+    // Set state immediately
     setIsDrawing(true);
     setSelectedHotspotId(null);
     setDrawingPoints([]);
+    
     // Auto open sidebar if drawing
     if(!isSidebarOpen) setIsSidebarOpen(true);
-  };
+    
+    // Reset flag after a delay to ensure all events have been processed
+    setTimeout(() => {
+      startDrawingRef.current = false;
+    }, 200);
+  }, [isSidebarOpen]);
 
   const finishDrawing = useCallback(() => {
     if (drawingPoints.length < 3) {
       alert("A polygon hotspot must have at least 3 points.");
       setDrawingPoints([]);
       setIsDrawing(false);
+      isDrawingRef.current = false;
       return;
     }
 
@@ -154,16 +190,27 @@ export const Editor: React.FC<EditorProps> = ({
     setHotspotsHistory(prev => [...prev, newHotspot]);
     setDrawingPoints([]);
     setIsDrawing(false);
+    isDrawingRef.current = false;
+    startDrawingRef.current = false; // Reset the flag as well
     setSelectedHotspotId(newHotspot.id);
   }, [drawingPoints, hotspots.length, view.id, setHotspotsHistory]);
   
   const cancelDrawing = useCallback(() => {
     setIsDrawing(false);
+    isDrawingRef.current = false;
+    startDrawingRef.current = false;
     setDrawingPoints([]);
   }, []);
 
   const handleMapClick = (coords: Coordinate) => {
-    if (isDrawing) {
+    // Don't handle map clicks if we just started drawing (to prevent immediate deactivation)
+    if (startDrawingRef.current) {
+      return;
+    }
+    if (!isDrawing || !isDrawingRef.current) {
+      return;
+    }
+    if (isDrawing && isDrawingRef.current) {
         if (drawingType === 'polygon') {
             setDrawingPoints(prev => [...prev, coords]);
         } else {
@@ -179,12 +226,18 @@ export const Editor: React.FC<EditorProps> = ({
             };
             setHotspotsHistory(prev => [...prev, newHotspot]);
             setIsDrawing(false);
+            isDrawingRef.current = false;
+            startDrawingRef.current = false;
             setSelectedHotspotId(newHotspot.id);
         }
     }
   };
 
   const handleHotspotClick = (hotspotId: string) => {
+    // Don't handle hotspot clicks if we just started drawing
+    if (startDrawingRef.current) {
+      return;
+    }
     if (!isDrawing) {
       setSelectedHotspotId(hotspotId);
       // Auto open sidebar to show properties
@@ -209,9 +262,28 @@ export const Editor: React.FC<EditorProps> = ({
     setHotspotToDelete(null);
   };
 
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (hotspots.length !== viewHotspots.length) return true;
+    // Deep comparison would be better, but for now just check length and IDs
+    const hotspotIds = new Set(hotspots.map(h => h.id));
+    const viewHotspotIds = new Set(viewHotspots.map(h => h.id));
+    if (hotspotIds.size !== viewHotspotIds.size) return true;
+    for (const id of hotspotIds) {
+      if (!viewHotspotIds.has(id)) return true;
+    }
+    return false;
+  }, [hotspots, viewHotspots]);
+
   const handleSave = useCallback(() => {
     onSave(view.id, hotspots);
     resetHotspotsHistory(hotspots);
+    // Reset drawing state after save
+    setIsDrawing(false);
+    isDrawingRef.current = false;
+    startDrawingRef.current = false;
+    setDrawingPoints([]);
+    setSelectedHotspotId(null);
   }, [onSave, view.id, hotspots, resetHotspotsHistory]);
   
   const handleZoom = (direction: 'in' | 'out') => {
@@ -312,13 +384,19 @@ export const Editor: React.FC<EditorProps> = ({
     ]);
 
   // Create a single source of truth for all hotspots in preview mode.
-  // This combines the saved hotspots from other views with the unsaved, live hotspots from the current editor session.
+  // In preview mode, we want to show all hotspots from the project so navigation works correctly
   const liveProjectHotspots = useMemo(() => {
-    // Get all saved hotspots *except* for the view currently being edited
-    const otherViewsHotspots = allProjectHotspots.filter(h => h.viewId !== view.id);
-    // Combine them with the unsaved hotspots for the current view
-    return [...otherViewsHotspots, ...hotspots];
-  }, [allProjectHotspots, view.id, hotspots]);
+    if (isPreviewing) {
+      // In preview mode, combine current view hotspots with all project hotspots
+      // This ensures navigation to other views shows their hotspots correctly
+      const currentViewHotspotIds = new Set(hotspots.map(h => h.id));
+      // Merge: current view hotspots (edited) + all other project hotspots
+      const otherHotspots = allProjectHotspots.filter(h => !currentViewHotspotIds.has(h.id));
+      return [...hotspots, ...otherHotspots];
+    }
+    // When not previewing, only use hotspots from the current view being edited
+    return hotspots;
+  }, [hotspots, allProjectHotspots, isPreviewing]);
 
 
   return (
@@ -328,7 +406,14 @@ export const Editor: React.FC<EditorProps> = ({
         <div className="w-full h-full flex flex-col">
             <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between gap-4 z-20">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <button onClick={onBack} className="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-100 flex-shrink-0">
+                    <button 
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onBack();
+                        }} 
+                        className="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-100 flex-shrink-0 transition-colors"
+                    >
                         <BackIcon className="w-5 h-5"/>
                     </button>
                     <div className="truncate text-gray-900 dark:text-white">
@@ -338,22 +423,34 @@ export const Editor: React.FC<EditorProps> = ({
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                     <button
-                        onClick={handleStartPreview}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleStartPreview();
+                        }}
                         className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md transition hover:bg-gray-50 dark:hover:bg-gray-600"
                     >
                         <EyeIcon className="w-5 h-5" />
                         Preview
                     </button>
                      <button
-                        onClick={handleStartPreview}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleStartPreview();
+                        }}
                         className="sm:hidden p-2 text-gray-700 bg-white border border-gray-300 rounded-md transition hover:bg-gray-50"
                         title="Preview"
                     >
                         <EyeIcon className="w-5 h-5" />
                     </button>
                     <button
-                        onClick={handleSave}
-                        disabled={!canUndo}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleSave();
+                        }}
+                        disabled={!hasUnsavedChanges}
                         className="px-4 py-2 text-sm font-medium text-white bg-[#5C7263] dark:bg-green-700 rounded-md transition hover:bg-opacity-90 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
                         aria-label="Save (Ctrl+S)"
                     >
@@ -379,7 +476,7 @@ export const Editor: React.FC<EditorProps> = ({
                   onMapClick={handleMapClick}
                   onHotspotClick={handleHotspotClick}
                   onUpdateHotspot={updateHotspot}
-                  isDrawing={isDrawing}
+                  isDrawing={isDrawing && !startDrawingRef.current}
                   transform={transform}
                   onTransformChange={setTransform}
                   fitViewToggle={fitViewToggle}
@@ -388,10 +485,28 @@ export const Editor: React.FC<EditorProps> = ({
                 {/* Floating Undo/Redo Controls */}
                 <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
                     <div className="flex bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        <button onClick={undo} disabled={!canUndo} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed border-r border-gray-100 dark:border-gray-700" title="Undo (Ctrl+Z)">
+                        <button 
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                undo();
+                            }} 
+                            disabled={!canUndo} 
+                            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed border-r border-gray-100 dark:border-gray-700" 
+                            title="Undo (Ctrl+Z)"
+                        >
                             <UndoIcon className="w-5 h-5"/>
                         </button>
-                        <button onClick={redo} disabled={!canRedo} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed" title="Redo (Ctrl+Shift+Z)">
+                        <button 
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                redo();
+                            }} 
+                            disabled={!canRedo} 
+                            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed" 
+                            title="Redo (Ctrl+Shift+Z)"
+                        >
                             <RedoIcon className="w-5 h-5"/>
                         </button>
                     </div>
@@ -400,9 +515,39 @@ export const Editor: React.FC<EditorProps> = ({
                 {/* Floating Zoom Controls - Moved to Top Right as requested */}
                 <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
                      <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        <button onClick={() => handleZoom('in')} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700" title="Zoom In"><ZoomInIcon className="w-5 h-5"/></button>
-                        <button onClick={handleFitToScreen} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700" title="Fit to Screen"><FitToScreenIcon className="w-5 h-5"/></button>
-                        <button onClick={() => handleZoom('out')} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Zoom Out"><ZoomOutIcon className="w-5 h-5"/></button>
+                        <button 
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleZoom('in');
+                            }} 
+                            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700" 
+                            title="Zoom In"
+                        >
+                            <ZoomInIcon className="w-5 h-5"/>
+                        </button>
+                        <button 
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleFitToScreen();
+                            }} 
+                            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700" 
+                            title="Fit to Screen"
+                        >
+                            <FitToScreenIcon className="w-5 h-5"/>
+                        </button>
+                        <button 
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleZoom('out');
+                            }} 
+                            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" 
+                            title="Zoom Out"
+                        >
+                            <ZoomOutIcon className="w-5 h-5"/>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -474,8 +619,27 @@ export const Editor: React.FC<EditorProps> = ({
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="font-semibold text-base text-gray-800 dark:text-white">Hotspots ({hotspots.length})</h3>
                     {!isDrawing && (
-                        <button onClick={startDrawing} className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#5C7263] dark:text-green-400 hover:text-[#2E2E2E] dark:hover:text-white transition bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded-md">
-                        <PlusIcon className="w-3 h-3" /> New
+                        <button 
+                            type="button"
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                e.nativeEvent.stopImmediatePropagation();
+                                // Prevent the click from reaching the map
+                                startDrawing(e);
+                            }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                e.nativeEvent.stopImmediatePropagation();
+                            }}
+                            onMouseUp={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }}
+                            className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[#5C7263] dark:text-green-400 hover:text-[#2E2E2E] dark:hover:text-white transition bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded-md"
+                        >
+                        <PlusIcon className="w-3 h-3" /> Ny hotspot
                         </button>
                     )}
                 </div>

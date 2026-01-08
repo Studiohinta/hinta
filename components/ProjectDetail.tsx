@@ -18,6 +18,7 @@ import { UsersIcon } from './icons/UsersIcon';
 import { UserPlusIcon } from './icons/UserPlusIcon';
 import { BadgeCheckIcon } from './icons/BadgeCheckIcon';
 import { MediaGallery } from './MediaGallery';
+import { uploadViewImage, uploadNavigationMapImage } from '../lib/supabaseStorage';
 
 
 interface ProjectDetailProps {
@@ -178,6 +179,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
     const [newViewParentId, setNewViewParentId] = useState<string | null>(null);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
 
     const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
     const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
@@ -209,7 +211,19 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
         setIsViewModalOpen(true);
     };
 
-    const closeViewModal = () => setIsViewModalOpen(false);
+    const closeViewModal = () => {
+        setIsViewModalOpen(false);
+        setEditingView(null);
+        setViewForm(ViewFormInitialState);
+        setNewViewParentId(null);
+        // Clean up blob URLs to prevent memory leaks
+        if (imagePreview && imagePreview.startsWith('blob:')) {
+            URL.revokeObjectURL(imagePreview);
+        }
+        setImagePreview(null);
+        setImageFile(null);
+        setIsUploadingImage(false);
+    };
 
     useEffect(() => {
         if (isUnitModalOpen) {
@@ -362,11 +376,21 @@ House A3,Bofaktablad-hus3,for-sale,4195000,125,5,,,5998,,`;
         }
     };
 
-    const handleNavMapUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleNavMapUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            const imageUrl = URL.createObjectURL(file);
-            onUpdateProject({ ...project, navigationMapImageUrl: imageUrl });
+            setIsUploadingImage(true);
+            try {
+                const imageUrl = await uploadNavigationMapImage(file, project.id);
+                onUpdateProject({ ...project, navigationMapImageUrl: imageUrl });
+            } catch (error: any) {
+                console.error('Error uploading navigation map image:', error);
+                const errorMessage = error?.message || error?.error?.message || 'Okänt fel';
+                console.error('Full error details:', error);
+                alert(`Kunde inte ladda upp bilden: ${errorMessage}\n\nKontrollera:\n- Att bucketen "project-assets" finns i Supabase\n- Att bucketen är markerad som Public\n- Att policies är korrekt konfigurerade\n\nSe browser console (F12) för mer detaljer.`);
+            } finally {
+                setIsUploadingImage(false);
+            }
         }
     };
     
@@ -375,33 +399,51 @@ House A3,Bofaktablad-hus3,for-sale,4195000,125,5,,,5998,,`;
         setViewForm(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleViewSubmit = (e: React.FormEvent) => {
+    const handleViewSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsUploadingImage(true);
         
-        if (editingView) { // Handle update
-            const updatedData: Partial<Omit<View, 'id' | 'projectId'>> = {
-                ...viewForm,
-            };
-            if (imagePreview && imagePreview !== editingView.imageURL) {
-                updatedData.imageURL = imagePreview;
-            }
-            onUpdateView(editingView.id, updatedData);
-        } else { // Handle create
-            if (imageFile && imagePreview) {
-                const typeSuffix = viewForm.type === 'overview' ? 'birdeye' : viewForm.type;
-                const baseTitle = `${project.name}_${typeSuffix}`;
-                let finalTitle = baseTitle;
-                let counter = 2;
-                // Ensure unique title
-                while (views.some(v => v.title.toLowerCase() === finalTitle.toLowerCase())) {
-                    finalTitle = `${baseTitle}_${counter}`;
-                    counter++;
+        try {
+            if (editingView) { // Handle update
+                const updatedData: Partial<Omit<View, 'id' | 'projectId'>> = {
+                    ...viewForm,
+                };
+                // If a new image file was selected, upload it to Supabase Storage
+                if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+                    const uploadedUrl = await uploadViewImage(imageFile, project.id);
+                    updatedData.imageURL = uploadedUrl;
+                } else if (imagePreview && imagePreview !== editingView.imageURL) {
+                    // If it's already a URL (not a blob), use it directly
+                    updatedData.imageURL = imagePreview;
                 }
+                onUpdateView(editingView.id, updatedData);
+            } else { // Handle create
+                if (imageFile) {
+                    // Upload image to Supabase Storage
+                    const uploadedUrl = await uploadViewImage(imageFile, project.id);
+                    
+                    const typeSuffix = viewForm.type === 'overview' ? 'birdeye' : viewForm.type;
+                    const baseTitle = `${project.name}_${typeSuffix}`;
+                    let finalTitle = baseTitle;
+                    let counter = 2;
+                    // Ensure unique title
+                    while (views.some(v => v.title.toLowerCase() === finalTitle.toLowerCase())) {
+                        finalTitle = `${baseTitle}_${counter}`;
+                        counter++;
+                    }
 
-                onAddView({ title: finalTitle, type: viewForm.type, imageURL: imagePreview }, newViewParentId);
+                    onAddView({ title: finalTitle, type: viewForm.type, imageURL: uploadedUrl }, newViewParentId);
+                }
             }
+            closeViewModal();
+        } catch (error: any) {
+            console.error('Error uploading view image:', error);
+            const errorMessage = error?.message || error?.error?.message || 'Okänt fel';
+            console.error('Full error details:', error);
+            alert(`Kunde inte ladda upp bilden: ${errorMessage}\n\nKontrollera:\n- Att bucketen "project-assets" finns i Supabase\n- Att bucketen är markerad som Public\n- Att policies är korrekt konfigurerade\n\nSe browser console (F12) för mer detaljer.`);
+        } finally {
+            setIsUploadingImage(false);
         }
-        closeViewModal();
     };
     
     const confirmDeleteView = () => {
@@ -530,7 +572,14 @@ House A3,Bofaktablad-hus3,for-sale,4195000,125,5,,,5998,,`;
         <div className="p-4 sm:p-8 h-full flex flex-col">
             <div className="max-w-7xl mx-auto w-full">
                 <header className="mb-6 sm:mb-8">
-                    <button onClick={onBack} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-[#2E2E2E] dark:hover:text-white mb-4">
+                    <button 
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onBack();
+                        }} 
+                        className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-[#2E2E2E] dark:hover:text-white mb-4 transition-colors"
+                    >
                         <BackIcon className="w-4 h-4" />
                         Tillbaka till projekt
                     </button>
@@ -921,7 +970,9 @@ House A3,Bofaktablad-hus3,for-sale,4195000,125,5,,,5998,,`;
 
                         <div className="flex justify-end gap-3 mt-8">
                             <button type="button" onClick={closeViewModal} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600">Avbryt</button>
-                            <button type="submit" disabled={editingView ? !viewForm.title.trim() : !imageFile} className="px-4 py-2 text-sm font-medium text-white bg-[#5C7263] dark:bg-green-700 rounded-md hover:bg-opacity-90 disabled:bg-gray-300"> {editingView ? 'Spara ändringar' : 'Lägg till vy'}</button>
+                            <button type="submit" disabled={(editingView ? !viewForm.title.trim() : !imageFile) || isUploadingImage} className="px-4 py-2 text-sm font-medium text-white bg-[#5C7263] dark:bg-green-700 rounded-md hover:bg-opacity-90 disabled:bg-gray-300">
+                                {isUploadingImage ? 'Laddar upp...' : (editingView ? 'Spara ändringar' : 'Lägg till vy')}
+                            </button>
                         </div>
                     </form>
                 </Modal>

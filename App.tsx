@@ -1,17 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Editor } from './components/Editor';
 import { ProjectsList } from './components/ProjectsList';
 import { ProjectDetail } from './components/ProjectDetail';
 import { Sidebar } from './components/Sidebar';
+import { Login } from './components/Login';
 import { Project, View, Hotspot, Unit, UnitStatus, UnitFile, HotspotStatus, ProjectStatus, ProjectMember, User, UserRole } from './types';
 import { Viewer } from './components/Viewer';
-import { ToastProvider, useToast } from './components/Toast';
+import { useToast } from './components/Toast';
 import { Settings } from './components/Settings';
 import { GlobalMediaLibrary } from './components/GlobalMediaLibrary';
-
-// Import Static Demo Data from the .ts file using a relative reference
-import { demoData } from './data/demo-project';
+import { useData } from './contexts/DataContext';
 
 type Page = 'projects' | 'projectDetail' | 'editor' | 'viewer' | 'settings' | 'media';
 
@@ -22,43 +21,203 @@ const MenuIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-// Refactored Hook: Always allows seeding from static JSON if empty or specifically requested
-function useDemoStorage<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
-    const [storedValue, setStoredValue] = useState<T>(() => {
-        try {
-            const item = window.localStorage.getItem(key);
-            // If local storage is empty, we hydrate from the static demo data
-            return item ? JSON.parse(item) : initialValue;
-        } catch (error) {
-            console.error(`Error reading ${key} from localStorage:`, error);
-            return initialValue;
-        }
-    });
-
-    const setValue = (value: T | ((val: T) => T)) => {
-        try {
-            const valueToStore = value instanceof Function ? value(storedValue) : value;
-            setStoredValue(valueToStore);
-            window.localStorage.setItem(key, JSON.stringify(valueToStore));
-        } catch (error) {
-            console.error(`Error saving ${key} to localStorage:`, error);
-        }
-    };
-
-    return [storedValue, setValue];
+// Authentication helper functions
+function isAuthenticated(): boolean {
+  try {
+    const auth = localStorage.getItem('hinta_auth');
+    if (!auth) return false;
+    const parsed = JSON.parse(auth);
+    // Optional: Add expiration check (e.g., 24 hours)
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+    if (Date.now() - parsed.timestamp > maxAge) {
+      localStorage.removeItem('hinta_auth');
+      return false;
+    }
+    return parsed.authenticated === true;
+  } catch {
+    return false;
+  }
 }
 
+function logout() {
+  localStorage.removeItem('hinta_auth');
+  window.location.href = '/';
+}
 
-function AppContent() {
-  // Initialize state using imported demoData as the fallback seed
-  const [projects, setProjects] = useDemoStorage<Project[]>('hinta_projects', demoData.projects as any);
-  const [views, setViews] = useDemoStorage<View[]>('hinta_views', demoData.views as any);
-  const [units, setUnits] = useDemoStorage<Unit[]>('hinta_units', demoData.units as any);
-  const [hotspots, setHotspots] = useDemoStorage<Hotspot[]>('hinta_hotspots', demoData.hotspots as any);
-  const [users, setUsers] = useDemoStorage<User[]>('hinta_users', demoData.users as any);
-  const [currentUser, setCurrentUser] = useDemoStorage<User>('hinta_current_user', demoData.users[0] as any);
+// Note: useDemoStorage removed - now using Supabase via DataContext
+
+// Public Viewer Component (no admin UI) - Fetches from Supabase
+function PublicViewer({ projectId }: { projectId: string }) {
+  const { fetchProject, fetchViews, fetchUnits, fetchHotspotsByProject } = useData();
+  const [project, setProject] = useState<Project | null>(null);
+  const [views, setViews] = useState<View[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [hotspots, setHotspots] = useState<Hotspot[]>([]);
+  const [publicViewId, setPublicViewId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        const [proj, projectViews, projectUnits, projectHotspots] = await Promise.all([
+          fetchProject(projectId),
+          fetchViews(projectId),
+          fetchUnits(projectId),
+          fetchHotspotsByProject(projectId),
+        ]);
+        
+        if (proj) {
+          setProject(proj);
+          setViews(projectViews);
+          setUnits(projectUnits);
+          setHotspots(projectHotspots);
+          
+          // Find starting view
+          const startView = projectViews.find(v => v.parentId === null);
+          if (startView) {
+            setPublicViewId(startView.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading project data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]); // Only depend on projectId - functions from DataContext are stable
+
+  if (isLoading) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading project...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100">
+        <div className="text-center p-8">
+          <h1 className="text-2xl font-bold">Project Not Found</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">The requested project could not be found or does not have a valid starting view.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const projectViews = views.filter(v => v.projectId === projectId);
+  const projectUnits = units.filter(u => u.projectId === projectId);
+  const currentView = projectViews.find(v => v.id === publicViewId);
+  const projectHotspots = hotspots.filter(h => projectViews.map(v => v.id).includes(h.viewId));
+
+  if (!currentView) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100">
+        <div className="text-center p-8">
+          <h1 className="text-2xl font-bold">No Starting View</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">This project does not have a valid starting view.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Viewer
+      project={project}
+      currentView={currentView}
+      allProjectViews={projectViews}
+      allProjectUnits={projectUnits}
+      hotspots={projectHotspots}
+      onNavigate={(viewId) => setPublicViewId(viewId)}
+    />
+  );
+}
+
+// Admin Dashboard Component
+function AdminDashboard() {
+  let dataContext;
+  try {
+    dataContext = useData();
+  } catch (error: any) {
+    console.error('Error getting data context:', error);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <div className="text-center p-8">
+          <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Error Loading Data</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error?.message || 'Unknown error'}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">Check browser console (F12) for details</p>
+        </div>
+      </div>
+    );
+  }
+
+  const {
+    projects,
+    views,
+    hotspots,
+    units,
+    fetchProjects,
+    fetchViews,
+    fetchUnits,
+    fetchHotspots,
+    fetchHotspotsByProject,
+    createProject,
+    updateProject,
+    deleteProject,
+    createView,
+    updateView,
+    deleteView,
+    saveHotspots,
+    createUnit,
+    updateUnit,
+    deleteUnit,
+    createProjectAsset,
+    deleteProjectAsset,
+    createProjectMember,
+    deleteProjectMember,
+    createUnitFile,
+  } = dataContext;
   
-  const { addToast } = useToast();
+  let toastContext;
+  try {
+    toastContext = useToast();
+  } catch (error: any) {
+    console.error('Error getting toast context:', error);
+    // Fallback toast function
+    toastContext = { addToast: (msg: string) => console.log('[Toast]:', msg) };
+  }
+  
+  const { addToast } = toastContext;
+  
+  // Keep users in localStorage for now (not migrated to Supabase yet)
+  const [users, setUsers] = useState<User[]>(() => {
+    try {
+      const stored = localStorage.getItem('hinta_users');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [currentUser, setCurrentUser] = useState<User>(() => {
+    try {
+      const stored = localStorage.getItem('hinta_current_user');
+      return stored ? JSON.parse(stored) : (users[0] || { id: 'user_1', name: 'Admin', email: 'admin@hinta.co', role: UserRole.SuperAdmin, avatarUrl: '', lastActive: new Date().toISOString() });
+    } catch {
+      return users[0] || { id: 'user_1', name: 'Admin', email: 'admin@hinta.co', role: UserRole.SuperAdmin, avatarUrl: '', lastActive: new Date().toISOString() };
+    }
+  });
+
+  // Load projects on mount
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -82,92 +241,80 @@ function AppContent() {
 
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 
+  // Track current path for routing
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
 
-  // Routing
-  const path = window.location.pathname;
-  const viewMatch = path.match(/^\/view\/([^/]+)/);
-  const publicProjectId = viewMatch ? viewMatch[1] : null;
-
-  const [publicViewId, setPublicViewId] = useState<string | null>(null);
-
+  // Listen for browser back/forward navigation
   useEffect(() => {
-    if (publicProjectId) {
-      const startView = views.find(v => v.projectId === publicProjectId && v.parentId === null);
-      if (startView) {
-        setPublicViewId(startView.id);
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Admin routing based on current path
+  const path = currentPath;
+  const adminMatch = path.match(/^\/admin(?:\/(.*))?$/);
+  const adminSubPath = adminMatch ? adminMatch[1] : null;
+
+  // Parse admin route
+  let page: Page = 'projects';
+  let selectedProjectId: string | null = null;
+  let selectedViewId: string | null = null;
+
+  if (adminSubPath) {
+    const parts = adminSubPath.split('/');
+    if (parts[0] === 'projects' && parts[1]) {
+      selectedProjectId = parts[1];
+      if (parts[2] === 'views' && parts[3]) {
+        selectedViewId = parts[3];
+        page = 'editor';
+      } else {
+        page = 'projectDetail';
       }
+    } else if (parts[0] === 'settings') {
+      page = 'settings';
+    } else if (parts[0] === 'media') {
+      page = 'media';
     }
-  }, [publicProjectId, views]);
-
-  if (publicProjectId) {
-    const project = projects.find(p => p.id === publicProjectId);
-    const projectViews = views.filter(v => v.projectId === publicProjectId);
-    const projectUnits = units.filter(u => u.projectId === publicProjectId);
-    const currentView = projectViews.find(v => v.id === publicViewId);
-
-    if (project && currentView) {
-      const projectHotspots = hotspots.filter(h => projectViews.map(v => v.id).includes(h.viewId));
-      return <Viewer
-        project={project}
-        currentView={currentView}
-        allProjectViews={projectViews}
-        allProjectUnits={projectUnits}
-        hotspots={projectHotspots}
-        onNavigate={(viewId) => setPublicViewId(viewId)}
-      />
-    }
-     return (
-        <div className="w-screen h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100">
-            <div className="text-center p-8">
-                <h1 className="text-2xl font-bold">Project Not Found</h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-2">The requested project could not be found or does not have a valid starting view.</p>
-                <a href="/" className="mt-6 inline-block px-5 py-2.5 bg-gray-800 text-white font-semibold rounded-lg shadow-md hover:bg-gray-900 transition-colors">
-                    Go to Homepage
-                </a>
-            </div>
-        </div>
-    );
   }
 
-  // Admin App State
-  const [page, setPage] = useState<Page>('projects');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [selectedViewId, setSelectedViewId] = useState<string | null>(null);
+  const handleSelectProject = useCallback((projectId: string) => {
+    const newPath = `/admin/projects/${projectId}`;
+    window.history.pushState({}, '', newPath);
+    setCurrentPath(newPath);
+  }, []);
 
-
-  const handleSelectProject = (projectId: string) => {
-    setSelectedProjectId(projectId);
-    setPage('projectDetail');
-  };
-
-  const handleSelectView = (viewId: string) => {
-    setSelectedViewId(viewId);
-    setPage('editor');
-  };
-
-  const handleBackToProjects = () => {
-    setSelectedProjectId(null);
-    setSelectedViewId(null);
-    setPage('projects');
-    if (window.innerWidth < 768) {
-        setIsSidebarCollapsed(true);
+  const handleSelectView = useCallback((viewId: string) => {
+    if (selectedProjectId) {
+      const newPath = `/admin/projects/${selectedProjectId}/views/${viewId}`;
+      window.history.pushState({}, '', newPath);
+      setCurrentPath(newPath);
     }
-  };
+  }, [selectedProjectId]);
+
+  const handleBackToProjects = useCallback(() => {
+    const newPath = '/admin';
+    window.history.pushState({}, '', newPath);
+    setCurrentPath(newPath);
+  }, []);
 
   const handleNavigateToMedia = () => {
-    setPage('media');
-    if (window.innerWidth < 768) {
-        setIsSidebarCollapsed(true);
-    }
+    const newPath = '/admin/media';
+    window.history.pushState({}, '', newPath);
+    setCurrentPath(newPath);
   };
 
-  const handleBackToProjectDetail = () => {
-    setSelectedViewId(null);
-    setPage('projectDetail');
-  }
+  const handleBackToProjectDetail = useCallback(() => {
+    if (selectedProjectId) {
+      const newPath = `/admin/projects/${selectedProjectId}`;
+      window.history.pushState({}, '', newPath);
+      setCurrentPath(newPath);
+    }
+  }, [selectedProjectId]);
 
-  const handleCreateProject = (projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'updatedBy' | 'organization' | 'ownerId' | 'members'> & { ownerName?: string; ownerEmail?: string; assignedUserIds?: string[] }) => {
+  const handleCreateProject = async (projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'updatedBy' | 'organization' | 'ownerId' | 'members'> & { ownerName?: string; ownerEmail?: string; assignedUserIds?: string[] }) => {
       const now = new Date().toISOString();
       const newOwnerId = `user_${Date.now()}_owner`;
       
@@ -196,8 +343,7 @@ function AppContent() {
           members.push(...assignedMembers);
       }
 
-      const newProject: Project = {
-          id: `proj_${new Date().getTime()}`,
+      const projectToCreate: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'assets' | 'members'> & { assets?: ProjectAsset[]; members?: ProjectMember[] } = {
           name: projectData.name,
           description: projectData.description,
           client: projectData.client,
@@ -207,26 +353,23 @@ function AppContent() {
           organization: projectData.client || 'Default Org',
           ownerId: projectData.ownerName ? newOwnerId : 'user_1',
           members: members,
-          createdAt: now,
-          updatedAt: now,
           updatedBy: { name: currentUser.name, avatarUrl: currentUser.avatarUrl },
       };
       
-      if (newProject.bostadsväljarenActive) {
+      if (projectToCreate.bostadsväljarenActive) {
           const activateDate = new Date();
           const oneYearFromNow = new Date(activateDate.setFullYear(activateDate.getFullYear() + 1));
-          newProject.bostadsväljarenActivatedAt = new Date().toISOString().split('T')[0];
-          newProject.bostadsväljarenExpiresAt = oneYearFromNow.toISOString().split('T')[0];
+          projectToCreate.bostadsväljarenActivatedAt = new Date().toISOString().split('T')[0];
+          projectToCreate.bostadsväljarenExpiresAt = oneYearFromNow.toISOString().split('T')[0];
       }
-      setProjects(prev => [...prev, newProject]);
-      addToast("Project created successfully");
+      
+      await createProject(projectToCreate);
   };
 
-  const handleUpdateProject = (updatedProject: Project) => {
+  const handleUpdateProject = async (updatedProject: Project) => {
     const originalProject = projects.find(p => p.id === updatedProject.id);
     if (!originalProject) return;
 
-    updatedProject.updatedAt = new Date().toISOString();
     updatedProject.updatedBy = { name: currentUser.name, avatarUrl: currentUser.avatarUrl };
 
     if (updatedProject.bostadsväljarenActive && !originalProject.bostadsväljarenActive) {
@@ -236,236 +379,254 @@ function AppContent() {
       updatedProject.bostadsväljarenExpiresAt = oneYearFromNow.toISOString().split('T')[0];
     }
     
-    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+    await updateProject(updatedProject);
   };
 
-  const handleAddMemberToProject = (projectId: string, member: ProjectMember) => {
-      setProjects(prev => prev.map(p => {
-          if (p.id === projectId) {
-              return { ...p, members: [...p.members, member] };
-          }
-          return p;
-      }));
-      addToast(`${member.name} invited to project`);
+  const handleAddMemberToProject = async (projectId: string, member: ProjectMember) => {
+      await createProjectMember({ ...member, projectId, userId: member.userId });
   };
 
-  const handleRemoveMemberFromProject = (projectId: string, userId: string) => {
-      setProjects(prev => prev.map(p => {
-          if (p.id === projectId) {
-              return { ...p, members: p.members.filter(m => m.userId !== userId) };
-          }
-          return p;
-      }));
-      addToast("Member removed");
+  const handleRemoveMemberFromProject = async (projectId: string, userId: string) => {
+      await deleteProjectMember(projectId, userId);
   };
 
-  const handleDuplicateProject = (projectId: string) => {
+  const handleDuplicateProject = async (projectId: string) => {
     const projectToDuplicate = projects.find(p => p.id === projectId);
     if (!projectToDuplicate) return;
 
-    const now = new Date().toISOString();
-    const newProjectId = `proj_${new Date().getTime()}`;
-    const newProject: Project = {
-        ...projectToDuplicate,
-        id: newProjectId,
-        name: `${projectToDuplicate.name} (Copy)`,
-        createdAt: now,
-        updatedAt: now,
-        updatedBy: { name: currentUser.name, avatarUrl: currentUser.avatarUrl },
-        status: ProjectStatus.Draft,
-        bostadsväljarenActive: false,
-        bostadsväljarenActivatedAt: undefined,
-        bostadsväljarenExpiresAt: undefined,
-        members: [],
-        assets: projectToDuplicate.assets ? [...projectToDuplicate.assets.map(a => ({...a, id: `asset_${Date.now()}_${Math.random()}`, projectId: newProjectId}))] : []
-    };
-    
+    // Create new project
+    const newProject = await createProject({
+      name: `${projectToDuplicate.name} (Copy)`,
+      description: projectToDuplicate.description,
+      client: projectToDuplicate.client,
+      organization: projectToDuplicate.organization,
+      ownerId: projectToDuplicate.ownerId,
+      status: ProjectStatus.Draft,
+      bostadsväljarenActive: false,
+      updatedBy: { name: currentUser.name, avatarUrl: currentUser.avatarUrl },
+      assets: projectToDuplicate.assets ? projectToDuplicate.assets.map(a => ({...a, projectId: ''})) : [],
+      members: [],
+    });
+
+    // Duplicate views
     const viewsToDuplicate = views.filter(v => v.projectId === projectId);
     const viewIdMap = new Map<string, string>();
 
-    const newViewsUnmapped = viewsToDuplicate.map((view, index) => {
-      const newId = `view_${new Date().getTime()}_${index}`;
-      viewIdMap.set(view.id, newId);
-      return { ...view, id: newId, projectId: newProjectId };
-    });
+    for (const view of viewsToDuplicate) {
+      const newView = await createView({
+        ...view,
+        projectId: newProject.id,
+        parentId: view.parentId && viewIdMap.has(view.parentId) ? viewIdMap.get(view.parentId)! : null,
+      });
+      viewIdMap.set(view.id, newView.id);
+    }
 
-    const newViews = newViewsUnmapped.map(view => {
-        if (view.parentId && viewIdMap.has(view.parentId)) {
-            return { ...view, parentId: viewIdMap.get(view.parentId)! };
-        }
-        return view;
-    });
-
+    // Duplicate units
     const unitsToDuplicate = units.filter(u => u.projectId === projectId);
-    const newUnits = unitsToDuplicate.map((unit, index) => ({
+    for (const unit of unitsToDuplicate) {
+      await createUnit({
         ...unit,
-        id: `unit_${new Date().getTime()}_${index}`,
-        projectId: newProjectId,
-    }));
+        projectId: newProject.id,
+      });
+    }
+
+    // Duplicate hotspots
+    const hotspotsToDuplicate = hotspots.filter(h => {
+      const view = viewsToDuplicate.find(v => v.id === h.viewId);
+      return view !== undefined;
+    });
     
-    setProjects(prev => [...prev, newProject]);
-    setViews(prev => [...prev, ...newViews]);
-    setUnits(prev => [...prev, ...newUnits]);
+    for (const hotspot of hotspotsToDuplicate) {
+      const newViewId = viewIdMap.get(hotspot.viewId);
+      if (newViewId) {
+        await saveHotspots(newViewId, [{
+          ...hotspot,
+          viewId: newViewId,
+          linkedViewId: hotspot.linkedViewId && viewIdMap.has(hotspot.linkedViewId) ? viewIdMap.get(hotspot.linkedViewId)! : undefined,
+        }]);
+      }
+    }
+
+    await fetchProjects();
     addToast("Project duplicated");
   };
 
-  const handleDeleteProject = (projectId: string) => {
-      setProjects(prev => prev.filter(p => p.id !== projectId));
-      const projectViewIds = views.filter(v => v.projectId === projectId).map(v => v.id);
-      setViews(prev => prev.filter(v => v.projectId !== projectId));
-      setUnits(prev => prev.filter(u => u.projectId !== projectId));
-      setHotspots(prev => prev.filter(h => !projectViewIds.includes(h.viewId)));
-      addToast("Project deleted", 'error');
+  const handleDeleteProject = async (projectId: string) => {
+      await deleteProject(projectId);
   };
 
-  const handleAddView = (viewData: Omit<View, 'id' | 'projectId' | 'parentId' | 'unitIds'>, parentId: string | null) => {
+  const handleAddView = async (viewData: Omit<View, 'id' | 'projectId' | 'parentId' | 'unitIds'>, parentId: string | null) => {
     if (!selectedProjectId) return;
-    const newView: View = {
+    const newView: Omit<View, 'id'> = {
         ...viewData,
-        id: `view_${new Date().getTime()}`,
         projectId: selectedProjectId,
         parentId,
         unitIds: [],
     };
-    setViews(prev => [...prev, newView]);
-    addToast("View added");
+    await createView(newView);
+    await fetchViews(selectedProjectId);
   };
 
-  const handleDeleteView = (viewId: string) => {
+  const handleDeleteView = async (viewId: string) => {
     const viewToDelete = views.find(v => v.id === viewId);
     if (!viewToDelete) return;
 
-    const updatedViews = views
-        .filter(v => v.id !== viewId)
-        .map(v => {
-            if (v.parentId === viewId) {
-                return { ...v, parentId: viewToDelete.parentId };
-            }
-            return v;
-        });
+    // Update child views to point to the deleted view's parent
+    const childViews = views.filter(v => v.parentId === viewId);
+    for (const childView of childViews) {
+      await updateView(childView.id, { parentId: viewToDelete.parentId });
+    }
     
-    setViews(updatedViews);
-    setHotspots(prev => prev.filter(h => h.viewId !== viewId));
-    addToast("View deleted", 'error');
+    await deleteView(viewId);
+    if (selectedProjectId) {
+      await fetchViews(selectedProjectId);
+    }
   };
 
-  const handleUpdateView = (viewId: string, updatedData: Partial<Omit<View, 'id' | 'projectId'>>) => {
-    setViews(prevViews => prevViews.map(v => 
-        v.id === viewId ? { ...v, ...updatedData } : v
-    ));
-    addToast("View updated");
+  const handleUpdateView = async (viewId: string, updatedData: Partial<Omit<View, 'id' | 'projectId'>>) => {
+    await updateView(viewId, updatedData);
+    if (selectedProjectId) {
+      await fetchViews(selectedProjectId);
+    }
   };
 
-  const handleAddUnit = (unitData: Omit<Unit, 'id' | 'projectId'>) => {
+  const handleAddUnit = async (unitData: Omit<Unit, 'id' | 'projectId'>) => {
     if (!selectedProjectId) return;
-    const newUnit: Unit = {
+    const newUnit: Omit<Unit, 'id' | 'files'> = {
         ...unitData,
-        id: `unit_${new Date().getTime()}`,
         projectId: selectedProjectId,
     };
-    setUnits(prev => [...prev, newUnit]);
-    addToast("Unit created");
+    await createUnit(newUnit);
+    await fetchUnits(selectedProjectId);
   };
   
-  const handleAddUnitsBatch = (unitsData: Omit<Unit, 'id' | 'projectId' | 'files'>[]) => {
+  const handleAddUnitsBatch = async (unitsData: Omit<Unit, 'id' | 'projectId' | 'files'>[]) => {
     if (!selectedProjectId) return;
-    const newUnits: Unit[] = unitsData.map(unitData => ({
-        ...unitData,
-        files: [],
-        id: `unit_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`,
-        projectId: selectedProjectId,
-    }));
-    setUnits(prev => [...prev, ...newUnits]);
-    addToast(`${newUnits.length} units imported`);
+    for (const unitData of unitsData) {
+      await createUnit({ ...unitData, projectId: selectedProjectId });
+    }
+    await fetchUnits(selectedProjectId);
+    addToast(`${unitsData.length} units imported`);
   };
 
-  const handleAttachFilesToUnits = (files: File[]): number => {
+  const handleAttachFilesToUnits = async (files: File[]): Promise<number> => {
     if (!selectedProjectId) return 0;
     let matchedCount = 0;
     const projectUnits = units.filter(u => u.projectId === selectedProjectId);
 
-    const updatedUnits = projectUnits.map(unit => {
-        const matchedFile = files.find(file => {
-            const fileNameNormalized = file.name.substring(0, file.name.lastIndexOf('.')).toLowerCase().trim();
-            const factSheetNameNormalized = unit.factSheetFileName?.toLowerCase().trim();
-            const unitNameNormalized = unit.name.toLowerCase().trim();
+    // Note: For file uploads, you'll need to upload to Supabase Storage first
+    // For now, we'll use blob URLs (temporary solution)
+    // In production, upload files to Supabase Storage and use those URLs
+    
+    for (const unit of projectUnits) {
+      const matchedFile = files.find(file => {
+        const fileNameNormalized = file.name.substring(0, file.name.lastIndexOf('.')).toLowerCase().trim();
+        const factSheetNameNormalized = unit.factSheetFileName?.toLowerCase().trim();
+        const unitNameNormalized = unit.name.toLowerCase().trim();
 
-            if (factSheetNameNormalized && factSheetNameNormalized === fileNameNormalized) return true;
-            if (!factSheetNameNormalized && unitNameNormalized === fileNameNormalized) return true;
-            return false;
+        if (factSheetNameNormalized && factSheetNameNormalized === fileNameNormalized) return true;
+        if (!factSheetNameNormalized && unitNameNormalized === fileNameNormalized) return true;
+        return false;
+      });
+
+      if (matchedFile && !unit.files.some(f => f.name === matchedFile.name)) {
+        matchedCount++;
+        // Create blob URL (temporary - should upload to Supabase Storage)
+        const blobUrl = URL.createObjectURL(matchedFile);
+        const fileType = matchedFile.type.startsWith('image/') ? 'image' : (matchedFile.type === 'application/pdf' ? 'pdf' : 'other');
+        
+        // TODO: Upload file to Supabase Storage and use that URL instead
+        // For now, using blob URL (will be lost on page refresh)
+        await createUnitFile({
+          name: matchedFile.name,
+          url: blobUrl,
+          type: fileType,
+          unitId: unit.id,
         });
+      }
+    }
 
-        if (matchedFile) {
-            matchedCount++;
-            const newFile: UnitFile = {
-                id: `file_${new Date().getTime()}_${Math.random()}`,
-                name: matchedFile.name,
-                url: URL.createObjectURL(matchedFile),
-                type: matchedFile.type.startsWith('image/') ? 'image' : (matchedFile.type === 'application/pdf' ? 'pdf' : 'other'),
-            };
-            if (!unit.files.some(f => f.name === newFile.name)) {
-                return { ...unit, files: [...unit.files, newFile] };
-            }
-        }
-        return unit;
-    });
-
-    setUnits(currentUnits => currentUnits.map(u => {
-        const updated = updatedUnits.find(upd => upd.id === u.id);
-        return updated || u;
-    }));
-
+    await fetchUnits(selectedProjectId);
     return matchedCount;
   };
 
-  const handleUpdateUnit = (updatedUnit: Unit) => {
-    setUnits(prev => prev.map(u => u.id === updatedUnit.id ? updatedUnit : u));
-    addToast("Unit saved");
-  };
-
-  const handleDeleteUnit = (unitId: string) => {
-    if (window.confirm("Are you sure you want to delete this unit?")) {
-        setUnits(prev => prev.filter(u => u.id !== unitId));
-        addToast("Unit deleted", 'error');
+  const handleUpdateUnit = async (updatedUnit: Unit) => {
+    await updateUnit(updatedUnit);
+    if (selectedProjectId) {
+      await fetchUnits(selectedProjectId);
     }
   };
 
-  const handleSaveHotspots = (viewId: string, updatedHotspots: Hotspot[]) => {
-    const otherHotspots = hotspots.filter(h => h.viewId !== viewId);
-    setHotspots([...otherHotspots, ...updatedHotspots]);
-    addToast("Hotspots saved successfully");
+  const handleDeleteUnit = async (unitId: string) => {
+    if (window.confirm("Are you sure you want to delete this unit?")) {
+        await deleteUnit(unitId);
+        if (selectedProjectId) {
+          await fetchUnits(selectedProjectId);
+        }
+    }
   };
+
+  const handleSaveHotspots = async (viewId: string, updatedHotspots: Hotspot[]) => {
+    await saveHotspots(viewId, updatedHotspots);
+    if (selectedProjectId) {
+      await fetchHotspots(viewId);
+    }
+  };
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+
+  // Note: URL changes are handled by currentPath state and window.location.pathname
+
+  // Memoize filtered views and units for the selected project
+  const projectViews = useMemo(() => {
+    if (!selectedProjectId) return [];
+    return views.filter(v => v.projectId === selectedProjectId);
+  }, [views, selectedProjectId]);
+
+  const projectUnits = useMemo(() => {
+    if (!selectedProjectId) return [];
+    return units.filter(u => u.projectId === selectedProjectId);
+  }, [units, selectedProjectId]);
+
+  const projectHotspots = useMemo(() => {
+    if (!selectedProjectId) return [];
+    const projectViewIds = projectViews.map(v => v.id);
+    return hotspots.filter(h => projectViewIds.includes(h.viewId));
+  }, [hotspots, projectViews, selectedProjectId]);
+
+  // Load data when project is selected
+  useEffect(() => {
+    if (selectedProjectId) {
+      fetchViews(selectedProjectId);
+      fetchUnits(selectedProjectId);
+      fetchHotspotsByProject(selectedProjectId);
+    }
+  }, [selectedProjectId, fetchViews, fetchUnits, fetchHotspotsByProject]);
+
+  // Load hotspots when view is selected
+  useEffect(() => {
+    if (selectedViewId) {
+      fetchHotspots(selectedViewId);
+    }
+  }, [selectedViewId, fetchHotspots]);
 
   const renderPage = () => {
     const selectedProject = projects.find(p => p.id === selectedProjectId);
     const selectedView = views.find(v => v.id === selectedViewId);
+    const viewHotspots = hotspots.filter(h => h.viewId === selectedViewId);
 
     switch (page) {
-      case 'viewer':
-        if (selectedProject && selectedView) {
-            return <Viewer
-                project={selectedProject}
-                currentView={selectedView}
-                allProjectViews={views.filter(v => v.projectId === selectedProjectId)}
-                allProjectUnits={units.filter(u => u.projectId === selectedProjectId)}
-                hotspots={hotspots.filter(h => h.viewId === selectedView.id)}
-                onNavigate={(viewId) => setSelectedViewId(viewId)}
-                onExit={handleBackToProjects}
-            />
-        }
-        return <div>Error: Missing data for viewer.</div>
-
       case 'editor':
         if (selectedProject && selectedView) {
             return <Editor 
                 project={selectedProject}
                 view={selectedView}
-                viewHotspots={hotspots.filter(h => h.viewId === selectedView.id)}
-                allProjectHotspots={hotspots}
+                viewHotspots={viewHotspots}
+                allProjectHotspots={projectHotspots}
                 onSave={handleSaveHotspots}
                 onBack={handleBackToProjectDetail}
-                allProjectViews={views.filter(v => v.projectId === selectedProjectId)}
-                allProjectUnits={units.filter(u => u.projectId === selectedProjectId)}
+                allProjectViews={projectViews}
+                allProjectUnits={projectUnits}
             />;
         }
         return <div>Error: Missing data for editor.</div>
@@ -474,8 +635,8 @@ function AppContent() {
         if (selectedProject) {
             return <ProjectDetail 
                 project={selectedProject}
-                views={views.filter(v => v.projectId === selectedProjectId)}
-                units={units.filter(u => u.projectId === selectedProjectId)}
+                views={projectViews}
+                units={projectUnits}
                 onSelectView={handleSelectView}
                 onAddView={handleAddView}
                 onUpdateView={handleUpdateView}
@@ -527,8 +688,9 @@ function AppContent() {
           onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
           onNavigateToProjects={handleBackToProjects}
           onNavigateToSettings={() => {
-            setPage('settings');
-            if (window.innerWidth < 768) setIsSidebarCollapsed(true);
+            const newPath = '/admin/settings';
+            window.history.pushState({}, '', newPath);
+            setCurrentPath(newPath);
           }}
           onNavigateToMedia={handleNavigateToMedia}
           isDarkMode={isDarkMode}
@@ -559,12 +721,98 @@ function AppContent() {
   );
 }
 
+function AppContent() {
+  const [authenticated, setAuthenticated] = useState(isAuthenticated);
+
+  // Check authentication on mount and route changes
+  useEffect(() => {
+    const checkAuth = () => {
+      const path = window.location.pathname;
+      const isAuth = isAuthenticated();
+      setAuthenticated(isAuth);
+
+      // If trying to access /admin without auth, redirect to /
+      if (path.startsWith('/admin') && !isAuth) {
+        window.location.href = '/';
+        return;
+      }
+
+      // If authenticated and on root, redirect to /admin
+      if (path === '/' && isAuth) {
+        window.location.href = '/admin';
+        return;
+      }
+    };
+
+    checkAuth();
+    window.addEventListener('popstate', checkAuth);
+    return () => window.removeEventListener('popstate', checkAuth);
+  }, []);
+
+  // Handle login
+  const handleLogin = () => {
+    setAuthenticated(true);
+    window.location.href = '/admin';
+  };
+
+  // Routing logic
+  const path = window.location.pathname;
+  
+  // Public viewer route - NO admin UI
+  const viewMatch = path.match(/^\/view\/([^/]+)/);
+  if (viewMatch) {
+    const projectId = viewMatch[1];
+    return <PublicViewer projectId={projectId} />;
+  }
+
+  // Admin route - requires authentication
+  if (path.startsWith('/admin')) {
+    if (!authenticated) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+          <div className="text-center">
+            <p className="text-gray-600 dark:text-gray-400">Redirecting to login...</p>
+          </div>
+        </div>
+      ); // Will redirect in useEffect
+    }
+    try {
+      return <AdminDashboard />;
+    } catch (error: any) {
+      console.error('Error rendering AdminDashboard:', error);
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+          <div className="text-center p-8">
+            <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Error Loading Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">{error?.message || 'Unknown error'}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-500">Check browser console (F12) for details</p>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  // Root route - show login
+  if (path === '/') {
+    if (authenticated) {
+      return null; // Will redirect in useEffect
+    }
+    return <Login onLogin={handleLogin} />;
+  }
+
+  // 404 for unknown routes
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">404 - Page Not Found</h1>
+        <a href="/" className="mt-4 inline-block text-brand-primary dark:text-brand-accent">Go to Homepage</a>
+      </div>
+    </div>
+  );
+}
+
 function App() {
-    return (
-        <ToastProvider>
-            <AppContent />
-        </ToastProvider>
-    );
+    return <AppContent />;
 }
 
 export default App;
