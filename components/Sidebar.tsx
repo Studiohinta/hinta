@@ -1,4 +1,5 @@
 import React from 'react';
+import { brandAssets } from '../lib/brandAssets';
 import { ProjectIcon } from './icons/ProjectIcon';
 import { SettingsIcon } from './icons/SettingsIcon';
 import { ProfileIcon } from './icons/ProfileIcon';
@@ -62,20 +63,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, isCollapsed, onTog
 
             <div className={`p-6 h-[100px] flex items-center ${isCollapsed ? 'justify-center' : 'pl-8'}`}>
                 {isCollapsed ? (
-                    <div className="bg-brand-primary dark:bg-brand-accent p-2.5 rounded-xl shadow-lg">
-                        <ProjectIcon className="w-6 h-6 text-white dark:text-brand-primary" />
-                    </div>
+                    <>
+                        <img src={brandAssets.favicon.white} alt="HINTA" className="w-6 h-6 dark:hidden" />
+                        <img src={brandAssets.favicon.black} alt="HINTA" className="w-6 h-6 hidden dark:block" />
+                    </>
                 ) : (
                     <div className="flex items-center gap-4">
-                         <div className="bg-brand-primary dark:bg-brand-accent p-2.5 rounded-xl shadow-lg">
-                            <ProjectIcon className="w-6 h-6 text-white dark:text-brand-primary" />
-                         </div>
-                         <div>
-                            <h1 className="text-xl font-bold text-brand-primary dark:text-white tracking-tight whitespace-nowrap uppercase">
-                                HINTA
-                            </h1>
-                            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-brand-accent whitespace-nowrap font-bold">Studio</p>
-                         </div>
+                        <img src={brandAssets.favicon.white} alt="" className="w-6 h-6 dark:hidden flex-shrink-0" aria-hidden />
+                        <img src={brandAssets.favicon.black} alt="" className="w-6 h-6 hidden dark:block flex-shrink-0" aria-hidden />
+                        <div className="min-w-0">
+                            <img src={brandAssets.logo.black} alt="HINTA" className="h-5 dark:hidden w-auto" />
+                            <img src={brandAssets.logo.white} alt="HINTA" className="h-5 hidden dark:block w-auto" />
+                        </div>
                     </div>
                 )}
             </div>

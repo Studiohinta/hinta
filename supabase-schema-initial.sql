@@ -1,6 +1,7 @@
 -- ============================================
--- Hinta Production Schema
+-- Hinta Production Schema - INITIAL SETUP
 -- Nordic Minimalist - Business Critical Only
+-- Run this FIRST TIME only (no DROP statements)
 -- ============================================
 
 -- Enable required extensions
@@ -145,16 +146,6 @@ ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE views ENABLE ROW LEVEL SECURITY;
 ALTER TABLE units ENABLE ROW LEVEL SECURITY;
 ALTER TABLE hotspots ENABLE ROW LEVEL SECURITY;
-
--- Drop existing policies if they exist (for idempotency)
-DROP POLICY IF EXISTS "Public read projects" ON projects;
-DROP POLICY IF EXISTS "Admin write projects" ON projects;
-DROP POLICY IF EXISTS "Public read views" ON views;
-DROP POLICY IF EXISTS "Admin write views" ON views;
-DROP POLICY IF EXISTS "Public read units" ON units;
-DROP POLICY IF EXISTS "Admin write units" ON units;
-DROP POLICY IF EXISTS "Public read hotspots" ON hotspots;
-DROP POLICY IF EXISTS "Admin write hotspots" ON hotspots;
 
 -- Projects: Public read, Admin write/update/delete
 CREATE POLICY "Public read projects" ON projects

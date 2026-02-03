@@ -11,6 +11,7 @@ import { useToast } from './components/Toast';
 import { Settings } from './components/Settings';
 import { GlobalMediaLibrary } from './components/GlobalMediaLibrary';
 import { useData } from './contexts/DataContext';
+import { brandAssets } from './lib/brandAssets';
 
 type Page = 'projects' | 'projectDetail' | 'editor' | 'viewer' | 'settings' | 'media';
 
@@ -702,7 +703,8 @@ function AdminDashboard() {
                 <button onClick={() => setIsSidebarCollapsed(false)} className="p-2 text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
                     <MenuIcon className="w-6 h-6" />
                 </button>
-                <span className="font-bold text-gray-800 dark:text-white uppercase tracking-tighter">HINTA</span>
+                <img src={brandAssets.logo.black} alt="HINTA" className="h-6 dark:hidden" />
+                <img src={brandAssets.logo.white} alt="HINTA" className="h-6 hidden dark:block" />
                 <div className="w-8"></div>
             </div>
         )}

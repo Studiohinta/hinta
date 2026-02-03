@@ -1,4 +1,5 @@
 import React, { useState, FormEvent } from 'react';
+import { brandAssets } from '../lib/brandAssets';
 
 interface LoginProps {
   onLogin: () => void;
@@ -36,26 +37,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-950 dark:to-black">
       <div className="w-full max-w-md px-6">
-        {/* Logo */}
+        {/* Ikon ovanför logotyp (design-system) */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-brand-primary dark:bg-brand-accent rounded-3xl shadow-2xl mb-6">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              strokeWidth={2} 
-              stroke="currentColor" 
-              className="w-10 h-10 text-white dark:text-brand-primary"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-            </svg>
-          </div>
-          <h1 className="text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter mb-2">
-            HINTA
-          </h1>
-          <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.3em]">
-            Studio
-          </p>
+          <img src={brandAssets.favicon.black} alt="" className="w-12 h-12 mx-auto dark:hidden mb-4" aria-hidden />
+          <img src={brandAssets.favicon.white} alt="" className="w-12 h-12 mx-auto hidden dark:block mb-4" aria-hidden />
+          <img src={brandAssets.logo.black} alt="HINTA" className="h-10 mx-auto dark:hidden" />
+          <img src={brandAssets.logo.white} alt="HINTA" className="h-10 mx-auto hidden dark:block" />
         </div>
 
         {/* Login Form */}
