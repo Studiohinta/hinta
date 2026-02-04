@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { CloseIcon } from './icons/CloseIcon';
+import { Icons } from './Icons';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -50,10 +50,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             key={toast.id}
             className={`
               pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 transform translate-y-0 opacity-100 min-w-[300px]
-              ${
-                toast.type === 'success'
-                  ? 'bg-green-600 text-white'
-                  : toast.type === 'error'
+              ${toast.type === 'success'
+                ? 'bg-green-600 text-white'
+                : toast.type === 'error'
                   ? 'bg-red-600 text-white'
                   : 'bg-gray-800 text-white dark:bg-white dark:text-gray-900'
               }
@@ -64,7 +63,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               onClick={() => removeToast(toast.id)}
               className="p-1 hover:bg-black/10 rounded-full transition-colors"
             >
-              <CloseIcon className="w-4 h-4" />
+              <Icons.Close className="w-4 h-4" />
             </button>
           </div>
         ))}

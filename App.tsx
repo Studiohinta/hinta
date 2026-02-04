@@ -5,15 +5,16 @@ import { ProjectsList } from './components/ProjectsList';
 import { ProjectDetail } from './components/ProjectDetail';
 import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
-import { Project, View, Hotspot, Unit, UnitStatus, UnitFile, HotspotStatus, ProjectStatus, ProjectMember, User, UserRole } from './types';
+import { Project, View, Hotspot, Unit, UnitStatus, UnitFile, HotspotStatus, ProjectStatus, ProjectMember, User, UserRole, ProjectAsset } from './types';
 import { Viewer } from './components/Viewer';
 import { useToast } from './components/Toast';
 import { Settings } from './components/Settings';
 import { GlobalMediaLibrary } from './components/GlobalMediaLibrary';
 import { useData } from './contexts/DataContext';
 import { brandAssets } from './lib/brandAssets';
+import { DesignSystemPage } from './components/DesignSystemPage';
 
-type Page = 'projects' | 'projectDetail' | 'editor' | 'viewer' | 'settings' | 'media';
+type Page = 'projects' | 'projectDetail' | 'editor' | 'viewer' | 'settings' | 'media' | 'design-system';
 
 // Simple Menu Icon Component
 const MenuIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -67,13 +68,13 @@ function PublicViewer({ projectId }: { projectId: string }) {
           fetchUnits(projectId),
           fetchHotspotsByProject(projectId),
         ]);
-        
+
         if (proj) {
           setProject(proj);
           setViews(projectViews);
           setUnits(projectUnits);
           setHotspots(projectHotspots);
-          
+
           // Find starting view
           const startView = projectViews.find(v => v.parentId === null);
           if (startView) {
@@ -86,7 +87,7 @@ function PublicViewer({ projectId }: { projectId: string }) {
         setIsLoading(false);
       }
     }
-    
+
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]); // Only depend on projectId - functions from DataContext are stable
@@ -185,7 +186,7 @@ function AdminDashboard() {
     deleteProjectMember,
     createUnitFile,
   } = dataContext;
-  
+
   let toastContext;
   try {
     toastContext = useToast();
@@ -194,9 +195,9 @@ function AdminDashboard() {
     // Fallback toast function
     toastContext = { addToast: (msg: string) => console.log('[Toast]:', msg) };
   }
-  
+
   const { addToast } = toastContext;
-  
+
   // Keep users in localStorage for now (not migrated to Supabase yet)
   const [users, setUsers] = useState<User[]>(() => {
     try {
@@ -223,20 +224,20 @@ function AdminDashboard() {
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
-        const storedTheme = window.localStorage.getItem('hinta_theme');
-        if (storedTheme) return storedTheme === 'dark';
-        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const storedTheme = window.localStorage.getItem('hinta_theme');
+      if (storedTheme) return storedTheme === 'dark';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     return false;
   });
 
   useEffect(() => {
     if (isDarkMode) {
-        document.documentElement.classList.add('dark');
-        window.localStorage.setItem('hinta_theme', 'dark');
+      document.documentElement.classList.add('dark');
+      window.localStorage.setItem('hinta_theme', 'dark');
     } else {
-        document.documentElement.classList.remove('dark');
-        window.localStorage.setItem('hinta_theme', 'light');
+      document.documentElement.classList.remove('dark');
+      window.localStorage.setItem('hinta_theme', 'light');
     }
   }, [isDarkMode]);
 
@@ -278,6 +279,8 @@ function AdminDashboard() {
       page = 'settings';
     } else if (parts[0] === 'media') {
       page = 'media';
+    } else if (parts[0] === 'design-system') {
+      page = 'design-system';
     }
   }
 
@@ -307,6 +310,12 @@ function AdminDashboard() {
     setCurrentPath(newPath);
   };
 
+  const handleNavigateToDesignSystem = () => {
+    const newPath = '/admin/design-system';
+    window.history.pushState({}, '', newPath);
+    setCurrentPath(newPath);
+  };
+
   const handleBackToProjectDetail = useCallback(() => {
     if (selectedProjectId) {
       const newPath = `/admin/projects/${selectedProjectId}`;
@@ -316,55 +325,55 @@ function AdminDashboard() {
   }, [selectedProjectId]);
 
   const handleCreateProject = async (projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'updatedBy' | 'organization' | 'ownerId' | 'members'> & { ownerName?: string; ownerEmail?: string; assignedUserIds?: string[] }) => {
-      const now = new Date().toISOString();
-      const newOwnerId = `user_${Date.now()}_owner`;
-      
-      const members: ProjectMember[] = [];
-      
-      if (projectData.ownerName || projectData.ownerEmail) {
-          members.push({
-              userId: newOwnerId,
-              name: projectData.ownerName || 'Unknown Owner',
-              email: projectData.ownerEmail || '',
-              role: 'owner',
-              avatarUrl: `https://i.pravatar.cc/150?u=${newOwnerId}`
-          });
-      }
+    const now = new Date().toISOString();
+    const newOwnerId = `user_${Date.now()}_owner`;
 
-      if (projectData.assignedUserIds && projectData.assignedUserIds.length > 0) {
-          const assignedMembers = users
-            .filter(u => projectData.assignedUserIds?.includes(u.id))
-            .map(u => ({
-                userId: u.id,
-                name: u.name,
-                email: u.email,
-                role: 'editor' as ProjectMember['role'],
-                avatarUrl: u.avatarUrl
-            }));
-          members.push(...assignedMembers);
-      }
+    const members: ProjectMember[] = [];
 
-      const projectToCreate: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'assets' | 'members'> & { assets?: ProjectAsset[]; members?: ProjectMember[] } = {
-          name: projectData.name,
-          description: projectData.description,
-          client: projectData.client,
-          status: projectData.status,
-          bostadsväljarenActive: projectData.bostadsväljarenActive,
-          assets: projectData.assets,
-          organization: projectData.client || 'Default Org',
-          ownerId: projectData.ownerName ? newOwnerId : 'user_1',
-          members: members,
-          updatedBy: { name: currentUser.name, avatarUrl: currentUser.avatarUrl },
-      };
-      
-      if (projectToCreate.bostadsväljarenActive) {
-          const activateDate = new Date();
-          const oneYearFromNow = new Date(activateDate.setFullYear(activateDate.getFullYear() + 1));
-          projectToCreate.bostadsväljarenActivatedAt = new Date().toISOString().split('T')[0];
-          projectToCreate.bostadsväljarenExpiresAt = oneYearFromNow.toISOString().split('T')[0];
-      }
-      
-      await createProject(projectToCreate);
+    if (projectData.ownerName || projectData.ownerEmail) {
+      members.push({
+        userId: newOwnerId,
+        name: projectData.ownerName || 'Unknown Owner',
+        email: projectData.ownerEmail || '',
+        role: 'owner',
+        avatarUrl: `https://i.pravatar.cc/150?u=${newOwnerId}`
+      });
+    }
+
+    if (projectData.assignedUserIds && projectData.assignedUserIds.length > 0) {
+      const assignedMembers = users
+        .filter(u => projectData.assignedUserIds?.includes(u.id))
+        .map(u => ({
+          userId: u.id,
+          name: u.name,
+          email: u.email,
+          role: 'editor' as ProjectMember['role'],
+          avatarUrl: u.avatarUrl
+        }));
+      members.push(...assignedMembers);
+    }
+
+    const projectToCreate: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'assets' | 'members'> & { assets?: ProjectAsset[]; members?: ProjectMember[] } = {
+      name: projectData.name,
+      description: projectData.description,
+      client: projectData.client,
+      status: projectData.status,
+      bostadsväljarenActive: projectData.bostadsväljarenActive,
+      assets: projectData.assets,
+      organization: projectData.client || 'Default Org',
+      ownerId: projectData.ownerName ? newOwnerId : 'user_1',
+      members: members,
+      updatedBy: { name: currentUser.name, avatarUrl: currentUser.avatarUrl },
+    };
+
+    if (projectToCreate.bostadsväljarenActive) {
+      const activateDate = new Date();
+      const oneYearFromNow = new Date(activateDate.setFullYear(activateDate.getFullYear() + 1));
+      projectToCreate.bostadsväljarenActivatedAt = new Date().toISOString().split('T')[0];
+      projectToCreate.bostadsväljarenExpiresAt = oneYearFromNow.toISOString().split('T')[0];
+    }
+
+    await createProject(projectToCreate);
   };
 
   const handleUpdateProject = async (updatedProject: Project) => {
@@ -379,16 +388,16 @@ function AdminDashboard() {
       updatedProject.bostadsväljarenActivatedAt = now.toISOString().split('T')[0];
       updatedProject.bostadsväljarenExpiresAt = oneYearFromNow.toISOString().split('T')[0];
     }
-    
+
     await updateProject(updatedProject);
   };
 
   const handleAddMemberToProject = async (projectId: string, member: ProjectMember) => {
-      await createProjectMember({ ...member, projectId, userId: member.userId });
+    await createProjectMember({ ...member, projectId, userId: member.userId });
   };
 
   const handleRemoveMemberFromProject = async (projectId: string, userId: string) => {
-      await deleteProjectMember(projectId, userId);
+    await deleteProjectMember(projectId, userId);
   };
 
   const handleDuplicateProject = async (projectId: string) => {
@@ -405,7 +414,7 @@ function AdminDashboard() {
       status: ProjectStatus.Draft,
       bostadsväljarenActive: false,
       updatedBy: { name: currentUser.name, avatarUrl: currentUser.avatarUrl },
-      assets: projectToDuplicate.assets ? projectToDuplicate.assets.map(a => ({...a, projectId: ''})) : [],
+      assets: projectToDuplicate.assets ? projectToDuplicate.assets.map(a => ({ ...a, projectId: '' })) : [],
       members: [],
     });
 
@@ -436,7 +445,7 @@ function AdminDashboard() {
       const view = viewsToDuplicate.find(v => v.id === h.viewId);
       return view !== undefined;
     });
-    
+
     for (const hotspot of hotspotsToDuplicate) {
       const newViewId = viewIdMap.get(hotspot.viewId);
       if (newViewId) {
@@ -453,16 +462,16 @@ function AdminDashboard() {
   };
 
   const handleDeleteProject = async (projectId: string) => {
-      await deleteProject(projectId);
+    await deleteProject(projectId);
   };
 
   const handleAddView = async (viewData: Omit<View, 'id' | 'projectId' | 'parentId' | 'unitIds'>, parentId: string | null) => {
     if (!selectedProjectId) return;
     const newView: Omit<View, 'id'> = {
-        ...viewData,
-        projectId: selectedProjectId,
-        parentId,
-        unitIds: [],
+      ...viewData,
+      projectId: selectedProjectId,
+      parentId,
+      unitIds: [],
     };
     await createView(newView);
     await fetchViews(selectedProjectId);
@@ -477,7 +486,7 @@ function AdminDashboard() {
     for (const childView of childViews) {
       await updateView(childView.id, { parentId: viewToDelete.parentId });
     }
-    
+
     await deleteView(viewId);
     if (selectedProjectId) {
       await fetchViews(selectedProjectId);
@@ -494,13 +503,13 @@ function AdminDashboard() {
   const handleAddUnit = async (unitData: Omit<Unit, 'id' | 'projectId'>) => {
     if (!selectedProjectId) return;
     const newUnit: Omit<Unit, 'id' | 'files'> = {
-        ...unitData,
-        projectId: selectedProjectId,
+      ...unitData,
+      projectId: selectedProjectId,
     };
     await createUnit(newUnit);
     await fetchUnits(selectedProjectId);
   };
-  
+
   const handleAddUnitsBatch = async (unitsData: Omit<Unit, 'id' | 'projectId' | 'files'>[]) => {
     if (!selectedProjectId) return;
     for (const unitData of unitsData) {
@@ -518,7 +527,7 @@ function AdminDashboard() {
     // Note: For file uploads, you'll need to upload to Supabase Storage first
     // For now, we'll use blob URLs (temporary solution)
     // In production, upload files to Supabase Storage and use those URLs
-    
+
     for (const unit of projectUnits) {
       const matchedFile = files.find(file => {
         const fileNameNormalized = file.name.substring(0, file.name.lastIndexOf('.')).toLowerCase().trim();
@@ -535,7 +544,7 @@ function AdminDashboard() {
         // Create blob URL (temporary - should upload to Supabase Storage)
         const blobUrl = URL.createObjectURL(matchedFile);
         const fileType = matchedFile.type.startsWith('image/') ? 'image' : (matchedFile.type === 'application/pdf' ? 'pdf' : 'other');
-        
+
         // TODO: Upload file to Supabase Storage and use that URL instead
         // For now, using blob URL (will be lost on page refresh)
         await createUnitFile({
@@ -560,10 +569,10 @@ function AdminDashboard() {
 
   const handleDeleteUnit = async (unitId: string) => {
     if (window.confirm("Are you sure you want to delete this unit?")) {
-        await deleteUnit(unitId);
-        if (selectedProjectId) {
-          await fetchUnits(selectedProjectId);
-        }
+      await deleteUnit(unitId);
+      if (selectedProjectId) {
+        await fetchUnits(selectedProjectId);
+      }
     }
   };
 
@@ -619,105 +628,109 @@ function AdminDashboard() {
     switch (page) {
       case 'editor':
         if (selectedProject && selectedView && selectedViewId) {
-            return <Editor 
-                project={selectedProject}
-                view={selectedView}
-                viewId={selectedViewId}
-                viewHotspots={viewHotspots}
-                allProjectHotspots={projectHotspots}
-                onSave={handleSaveHotspots}
-                onBack={handleBackToProjectDetail}
-                allProjectViews={projectViews}
-                allProjectUnits={projectUnits}
-            />;
+          return <Editor
+            project={selectedProject}
+            view={selectedView}
+            viewId={selectedViewId}
+            viewHotspots={viewHotspots}
+            allProjectHotspots={projectHotspots}
+            onSave={handleSaveHotspots}
+            onBack={handleBackToProjectDetail}
+            allProjectViews={projectViews}
+            allProjectUnits={projectUnits}
+          />;
         }
         return <div>Error: Missing data for editor.</div>
 
       case 'projectDetail':
         if (selectedProject) {
-            return <ProjectDetail 
-                project={selectedProject}
-                views={projectViews}
-                units={projectUnits}
-                onSelectView={handleSelectView}
-                onAddView={handleAddView}
-                onUpdateView={handleUpdateView}
-                onDeleteView={handleDeleteView}
-                onAddUnit={handleAddUnit}
-                onAddUnitsBatch={handleAddUnitsBatch}
-                onAttachFilesToUnits={handleAttachFilesToUnits}
-                onUpdateProject={handleUpdateProject}
-                onUpdateUnit={handleUpdateUnit}
-                onDeleteUnit={handleDeleteUnit}
-                onAddMember={handleAddMemberToProject}
-                onRemoveMember={handleRemoveMemberFromProject}
-                onBack={handleBackToProjects}
-            />
+          return <ProjectDetail
+            project={selectedProject}
+            views={projectViews}
+            units={projectUnits}
+            onSelectView={handleSelectView}
+            onAddView={handleAddView}
+            onUpdateView={handleUpdateView}
+            onDeleteView={handleDeleteView}
+            onAddUnit={handleAddUnit}
+            onAddUnitsBatch={handleAddUnitsBatch}
+            onAttachFilesToUnits={handleAttachFilesToUnits}
+            onUpdateProject={handleUpdateProject}
+            onUpdateUnit={handleUpdateUnit}
+            onDeleteUnit={handleDeleteUnit}
+            onAddMember={handleAddMemberToProject}
+            onRemoveMember={handleRemoveMemberFromProject}
+            onBack={handleBackToProjects}
+          />
         }
         return <div>Project not found.</div>;
-      
+
       case 'settings':
-        return <Settings 
-            users={users} 
-            currentUser={currentUser}
-            onUpdateCurrentUser={setCurrentUser}
+        return <Settings
+          users={users}
+          currentUser={currentUser}
+          onUpdateCurrentUser={setCurrentUser}
         />;
 
       case 'media':
         return <GlobalMediaLibrary projects={projects} onUpdateProject={handleUpdateProject} />;
 
+      case 'design-system':
+        return <DesignSystemPage onBack={handleBackToProjects} />;
+
       case 'projects':
       default:
-        return <ProjectsList 
-            projects={projects}
-            views={views}
-            hotspots={hotspots}
-            users={users}
-            onSelectProject={handleSelectProject}
-            onCreateProject={handleCreateProject}
-            onUpdateProject={handleUpdateProject}
-            onDuplicateProject={handleDuplicateProject}
-            onDeleteProject={handleDeleteProject}
+        return <ProjectsList
+          projects={projects}
+          views={views}
+          hotspots={hotspots}
+          users={users}
+          onSelectProject={handleSelectProject}
+          onCreateProject={handleCreateProject}
+          onUpdateProject={handleUpdateProject}
+          onDuplicateProject={handleDuplicateProject}
+          onDeleteProject={handleDeleteProject}
         />;
     }
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100 flex flex-col md:flex-row transition-colors duration-200">
-      <Sidebar 
-          activePage={page}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
-          onNavigateToProjects={handleBackToProjects}
-          onNavigateToSettings={() => {
-            const newPath = '/admin/settings';
-            window.history.pushState({}, '', newPath);
-            setCurrentPath(newPath);
-          }}
-          onNavigateToMedia={handleNavigateToMedia}
-          isDarkMode={isDarkMode}
-          toggleTheme={toggleTheme}
-        />
-        
-        {isSidebarCollapsed && (
-            <div className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between sticky top-0 z-40">
-                <button onClick={() => setIsSidebarCollapsed(false)} className="p-2 text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <MenuIcon className="w-6 h-6" />
-                </button>
-                <img src={brandAssets.logo.black} alt="HINTA" className="h-6 dark:hidden" />
-                <img src={brandAssets.logo.white} alt="HINTA" className="h-6 hidden dark:block" />
-                <div className="w-8"></div>
-            </div>
-        )}
+    <div className="bg-brand-canvas dark:bg-gray-950 min-h-screen text-gray-900 dark:text-gray-100 flex flex-col md:flex-row transition-colors duration-200">
+      <Sidebar
+        activePage={page}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+        onNavigateToProjects={handleBackToProjects}
+        onNavigateToSettings={() => {
+          const newPath = '/admin/settings';
+          window.history.pushState({}, '', newPath);
+          setCurrentPath(newPath);
+        }}
+        onNavigateToMedia={handleNavigateToMedia}
+        onNavigateToDesignSystem={handleNavigateToDesignSystem}
+        isDarkMode={isDarkMode}
+        toggleTheme={toggleTheme}
+      />
 
-      <div className="flex-1 min-w-0 bg-gray-50/50 dark:bg-gray-950 relative">
+      {isSidebarCollapsed && (
+        <div className="md:hidden bg-brand-canvas dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between sticky top-0 z-40">
+          <button onClick={() => setIsSidebarCollapsed(false)} className="p-2 text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+            <MenuIcon className="w-6 h-6" />
+          </button>
+          <img src={brandAssets.logo.black} alt="HINTA" className="h-6 dark:hidden" />
+          <img src={brandAssets.logo.white} alt="HINTA" className="h-6 hidden dark:block" />
+          <div className="w-8"></div>
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0 bg-transparent dark:bg-gray-950 relative">
         {renderPage()}
-        
+
         {!isSidebarCollapsed && (
-            <div 
-                className="fixed inset-0 bg-black/50 z-40 md:hidden"
-                onClick={() => setIsSidebarCollapsed(true)}
-            />
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setIsSidebarCollapsed(true)}
+          />
         )}
       </div>
     </div>
@@ -760,7 +773,7 @@ function AppContent() {
 
   // Routing logic
   const path = window.location.pathname;
-  
+
   // Public viewer route - NO admin UI
   const viewMatch = path.match(/^\/view\/([^/]+)/);
   if (viewMatch) {
@@ -815,7 +828,7 @@ function AppContent() {
 }
 
 function App() {
-    return <AppContent />;
+  return <AppContent />;
 }
 
 export default App;

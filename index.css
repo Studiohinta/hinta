@@ -1,16 +1,23 @@
+@import "tailwindcss";
+
 /* App font stack – Google Fonts (Poppins) is loaded in index.html. */
 /* For local fonts, add .woff2/.woff files in public/fonts/ and uncomment below:
-
-@font-face {
-  font-family: 'YourFont';
-  src: url('/fonts/YourFont.woff2') format('woff2'), url('/fonts/YourFont.woff') format('woff');
-  font-weight: 300 700;
-  font-display: swap;
-}
+...
 */
 
 body {
-  font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
   margin: 0;
   overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Barlow', sans-serif;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }

@@ -1,48 +1,35 @@
 # HINTA – Design System & Grafisk Profil
 
-Detta dokument beskriver den grafiska profilen, designprinciper, UI-komponenter och UX-mönster som används i HINTA-plattformen.
+Detta dokument beskriver den grafiska profilen, designprinciper, UI-komponenter och UX-mönster i HINTA-plattformen, med fokus på "Nordic Cinematic" estetik och ett "Image-First" gränssnitt.
+
 
 ---
 
 ## 1. Färgpalett och Varumärke
 
-### Primärfärger
+### 🎨 Huvudpalett (Core)
 
-- **Brand Primary**: `#1a1a1a` (Matte Black)
-  - Används för: Primära knappar, logotyp, rubriker, aktivt tillstånd
-  - Tailwind: `bg-brand-primary`, `text-brand-primary`
+| Roll | Namn | Hex-kod | Användning |
+| :--- | :--- | :--- | :--- |
+| **Canvas** | Off-White | `#F9F9F9` | Huvudbakgrund. Mjukare än ren vit. |
+| **Ink** | Off-Black | `#0F0F0F` | Text, rubriker, mörka sektioner. (Ersätter Brand Primary) |
+| **The Glow** | Digital Lavender | `#C8C6F5` | Din Signaturfärg. Hover, knappar, tech-feeling. (Ersätter Brand Accent) |
+| **Nature** | Soft Sage | `#D8E2DC` | Komplement. Används för lugn och "grönska". |
 
-- **Brand Accent**: `#e5d0b1` (Warm Beige / Oak)
-  - Används för: Accentfärg, priser, hover-states, sekundära element
-  - Tailwind: `bg-brand-accent`, `text-brand-accent`
+### 🧱 Sekundär (Material)
 
-- **Brand Muted**: `#4b5563` (Muted Blue/Gray)
-  - Används för: Sekundära knappar, disabled states, borders
-  - Tailwind: `bg-brand-muted`, `text-brand-muted`
+| Roll | Namn | Hex-kod | Användning |
+| :--- | :--- | :--- | :--- |
+| **Structure** | Warm Stone | `#D1CDC7` | Borders, linjer, inaktiva element. (Greige). |
+| **Glass** | Frost | `rgba(255,255,255,0.7)` | För "Liquid"-effekten ovanpå bilder. |
 
-### Gråskalor
+### Tailwind Tokens
 
-- **Gray 750**: `#2d3748`
-- **Gray 850**: `#1a202c`
-- **Gray 950**: `#1a1a1a`
-- Standard Tailwind gray-skala används för text, bakgrunder och borders
-
-### Statusfärger
-
-- **Success/Green**: 
-  - Light: `bg-green-100 text-green-800`
-  - Dark: `bg-green-900/40 text-green-300`
-  - Används för: "TILL SALU", "Paid", success-meddelanden
-
-- **Warning/Amber**: 
-  - Light: `bg-amber-100 text-amber-800`
-  - Dark: `bg-amber-900/40 text-amber-300`
-  - Används för: "RESERVERAD", varningar
-
-- **Error/Red**: 
-  - Light: `bg-red-100 text-red-800`
-  - Dark: `bg-red-900/30 text-red-300`
-  - Används för: Felmeddelanden, delete-actions, varningar
+- `bg-brand-primary` / `text-brand-primary` → **Ink** (#0F0F0F)
+- `bg-brand-accent` / `text-brand-accent` → **The Glow** (#C8C6F5)
+- `bg-brand-canvas` → **Canvas** (#F9F9F9)
+- `bg-brand-nature` → **Nature** (#D8E2DC)
+- `bg-brand-muted` / `border-brand-muted` → **Structure** (#D1CDC7)
 
 ---
 
@@ -50,29 +37,33 @@ Detta dokument beskriver den grafiska profilen, designprinciper, UI-komponenter 
 
 ### Fontfamilj
 
-- **Primär font**: Poppins (Google Fonts)
-- **Vikter**: 300, 400, 500, 600, 700
-- **Font-family**: `'Poppins', sans-serif`
+- **Primär font (Rubrik)**: Barlow (Google Fonts)
+- **Primär font (Avsnitt)**: Inter (Google Fonts)
+- **Vikter**: 300, 400, 500, 600, 700, 800
+- **Font-family (Rubrik)**: `'Barlow', sans-serif`
+- **Font-family (Avsnitt)**: `'Inter', sans-serif`
 
 ### Typografiska Hierarkier
 
 #### Rubriker
+- **Font**: Barlow
+- **Letter Spacing**: 15% (`tracking-[0.15em]`)
 
 - **H1**: 
   ```css
-  text-4xl md:text-6xl font-black uppercase tracking-tighter
+  text-4xl md:text-6xl font-black uppercase tracking-[0.15em]
   ```
   - Används för: Huvudrubriker, hero-text
 
 - **H2**: 
   ```css
-  text-2xl md:text-3xl font-black uppercase tracking-tighter
+  text-2xl md:text-3xl font-black uppercase tracking-[0.15em]
   ```
   - Används för: Sektioner, kortsidor
 
 - **H3**: 
   ```css
-  text-xl font-black uppercase tracking-tighter
+  text-xl font-black uppercase tracking-[0.15em]
   ```
   - Används för: Underrubriker
 
@@ -108,9 +99,20 @@ Detta dokument beskriver den grafiska profilen, designprinciper, UI-komponenter 
 
 ---
 
-## 3. Designprinciper
+## 3. Designfilosofi: Nordic Cinematic & Image-First
+
+### Kärnvärden
+1. **Minimalistisk**: Fokus på innehåll, subtila effekter, inga onödiga overlays på bilden.
+2. **Premium**: Glassmorphism, mjuka transitions, högkvalitativa visualiseringar.
+3. **Immersiv (Image-First)**: Bilden är hjälten. Allt UI ska komplettera, inte konkurrera med visualiseringen.
+
+### Gränssnittsprinciper
+- **Obruten bild**: Bilden ska aldrig klippas (contain/fit-to-screen). Inga tunga barer i nederkant som täcker bilden.
+- **Kontextuell Navigation**: Menyer och listor placeras i sidofält (desktop) eller i ett naturligt vertikalt flöde (mobil) för att behålla bildens fokus.
+- **Subtil Interaktion**: Hotspots är osynliga som standard och framträder endast vid interaktion. Ingen text direkt på bilden.
 
 ### Glassmorphism (Liquid Glass)
+
 
 #### `.glass-panel`
 Huvudpaneler med backdrop-blur:
@@ -288,13 +290,15 @@ className="inline-block text-[8px] font-black
 - Endast ikoner när kollapsad
 - Active state: `bg-brand-primary dark:bg-white` med accentfärg
 
-#### Bottom Navigation (Viewer)
-- Fast position: `fixed bottom-6`
-- Centrerad: `left-1/2 -translate-x-1/2`
-- Max width: `max-w-md w-[calc(100%-3rem)]`
-- Glassmorphism-stil
-- 5 ikoner: Start, Navigering, Galleri, Solstudie, Sök
-- Active state: bakgrundsfärg + accentfärg på ikon/text
+#### Bottom Navigation (Viewer - Utfasad)
+> [!NOTE]
+> Den fasta menybaren i underkanten fasas ut till förmån för en sidofälts-baserad layout för att maximera bildfokus.
+
+#### Split-Panel Layout (Viewer)
+- **Desktop**: Bilden till vänster, flexibelt sidofält till höger (360px+).
+- **Mobil**: Bilden överst (full bredd), bostadslistan statiskt under bilden.
+- **Glassmorphism-sidofält**: Filtreringsalternativ och "Start/Navigering/Galleri" knappar integreras i toppen av sidofältet.
+
 
 #### Breadcrumbs
 - Visar hierarki i navigation modal
@@ -404,12 +408,19 @@ className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"
 
 ## 7. Viewer-specifika UI-element
 
+> [!IMPORTANT]
+> **Public Viewer (Besöksvy):** Ska vara strikt **Monokrom (Black & White)**.
+> Inga färgade accenter (som Digital Lavender) eller statusfärger (grön/röd) ska användas i den publika vyn.
+> Endast svart, vit och gråskalor för att maximera fokus på bilderna (Cinematic Feel).
+
+
 ### Hotspot-visualisering
 
 #### Polygon Hotspots
-- Fyllning med opacity (0 när inte hovered)
-- Stroke vid hover/highlight: `stroke="white" strokeWidth="2" strokeOpacity="0.8"`
-- Transition: `transition-all duration-300`
+- **Osynliga som standard**: `fillOpacity` och `strokeOpacity` är 0 (eller nära 0).
+- **Hover/Highlight**: Framträder med `stroke="white" strokeWidth="2" strokeOpacity="0.8"` och subtil fyllning.
+- **Inga etiketter**: Enhetsnamn visas INTE direkt på bilden. De visas i sidofältet eller i ett hover-card.
+
 
 #### Circle Hotspots
 - Vita cirklar: `fill="white" fillOpacity="0.85"` (0.95 vid hover)

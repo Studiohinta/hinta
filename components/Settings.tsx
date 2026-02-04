@@ -1,29 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { ProfileIcon } from './icons/ProfileIcon';
-import { BuildingIcon } from './icons/BuildingIcon';
-import { UsersIcon } from './icons/UsersIcon';
-import { KeyIcon } from './icons/KeyIcon';
-import { CreditCardIcon } from './icons/CreditCardIcon';
-import { UploadIcon } from './icons/UploadIcon';
-import { ShieldCheckIcon } from './icons/ShieldCheckIcon';
-import { TrashIcon } from './icons/TrashIcon';
-import { useToast } from './Toast';
+import { Icons } from './Icons';
 import { Modal } from './Modal';
-import { PlusIcon } from './icons/PlusIcon';
-import { DatabaseIcon } from './icons/DatabaseIcon';
-import { DownloadIcon } from './icons/DownloadIcon';
+import { useToast } from './Toast';
 
 // --- Sub Components ---
 
-const ProfileSettings: React.FC<{ 
-    user: User; 
-    onSave: (updates: Partial<User>) => void; 
+const ProfileSettings: React.FC<{
+    user: User;
+    onSave: (updates: Partial<User>) => void;
 }> = ({ user, onSave }) => {
     const [formData, setFormData] = useState({
         name: user.name,
         email: user.email,
-        bio: 'Senior Project Manager' 
+        bio: 'Senior Project Manager'
     });
 
     useEffect(() => {
@@ -45,7 +35,7 @@ const ProfileSettings: React.FC<{
                 <img src={user.avatarUrl} alt="Profile" className="w-20 h-20 rounded-full border-4 border-white dark:border-brand-primary shadow-lg" />
                 <div>
                     <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition">
-                        <UploadIcon className="w-4 h-4" /> Change Avatar
+                        <Icons.Upload className="w-12 h-12 text-gray-400" /> Change Avatar
                     </button>
                     <p className="text-xs text-gray-500 mt-2">JPG, GIF or PNG. Max size 800K</p>
                 </div>
@@ -54,35 +44,35 @@ const ProfileSettings: React.FC<{
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
-                    <input 
-                        type="text" 
-                        value={formData.name} 
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg shadow-sm focus:ring-brand-muted focus:border-brand-muted" 
+                    <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg shadow-sm focus:ring-brand-muted focus:border-brand-muted"
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
-                    <input 
-                        type="email" 
-                        value={formData.email} 
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg shadow-sm focus:ring-brand-muted focus:border-brand-muted" 
+                    <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg shadow-sm focus:ring-brand-muted focus:border-brand-muted"
                     />
                 </div>
                 <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bio / Title</label>
-                    <textarea 
-                        rows={3} 
-                        value={formData.bio} 
-                        onChange={(e) => setFormData({...formData, bio: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg shadow-sm focus:ring-brand-muted focus:border-brand-muted" 
+                    <textarea
+                        rows={3}
+                        value={formData.bio}
+                        onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg shadow-sm focus:ring-brand-muted focus:border-brand-muted"
                     />
                 </div>
             </div>
 
             <div className="pt-4 flex justify-end border-t dark:border-gray-700">
-                <button onClick={handleSave} className="px-6 py-2 bg-brand-primary dark:bg-brand-muted text-white rounded-lg font-medium transition shadow-sm">
+                <button onClick={handleSave} className="px-6 py-2 bg-brand-primary dark:bg-brand-accent text-white dark:text-brand-primary rounded-lg font-medium transition shadow-sm">
                     Save Changes
                 </button>
             </div>
@@ -90,10 +80,10 @@ const ProfileSettings: React.FC<{
     );
 };
 
-const OrganizationSettings: React.FC<{ 
-    canManageTeam: boolean; 
-    canDeleteOrg: boolean; 
-    onSave: () => void; 
+const OrganizationSettings: React.FC<{
+    canManageTeam: boolean;
+    canDeleteOrg: boolean;
+    onSave: () => void;
 }> = ({ canManageTeam, canDeleteOrg, onSave }) => (
     <div className="space-y-6 animate-fadeIn">
         <div>
@@ -106,7 +96,7 @@ const OrganizationSettings: React.FC<{
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Organization Name</label>
                 <input type="text" defaultValue="Studio HINTA" disabled={!canManageTeam} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg shadow-sm focus:ring-brand-muted focus:border-brand-muted disabled:opacity-60" />
             </div>
-                <div>
+            <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Website</label>
                 <input type="url" defaultValue="https://hinta.se" disabled={!canManageTeam} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg shadow-sm focus:ring-brand-muted focus:border-brand-muted disabled:opacity-60" />
             </div>
@@ -118,14 +108,14 @@ const OrganizationSettings: React.FC<{
 
         {canManageTeam && (
             <div className="pt-4 flex justify-end border-t dark:border-gray-700">
-                <button onClick={onSave} className="px-6 py-2 bg-brand-primary dark:bg-brand-muted text-white rounded-lg font-medium transition shadow-sm">
+                <button onClick={onSave} className="px-6 py-2 bg-brand-primary dark:bg-brand-accent text-white dark:text-brand-primary rounded-lg font-medium transition shadow-sm">
                     Save Organization
                 </button>
             </div>
         )}
 
         {/* Danger Zone */}
-            {canDeleteOrg && (
+        {canDeleteOrg && (
             <div className="mt-12 p-6 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 rounded-xl">
                 <h3 className="text-red-700 dark:text-red-400 font-bold mb-2">Danger Zone</h3>
                 <p className="text-sm text-red-600 dark:text-red-300 mb-4">Deleting the organization is irreversible. All projects, images, and data will be permanently removed.</p>
@@ -133,7 +123,7 @@ const OrganizationSettings: React.FC<{
                     Delete Organization
                 </button>
             </div>
-            )}
+        )}
     </div>
 );
 
@@ -158,7 +148,7 @@ const TeamSettings: React.FC<{
 
     // UI Helpers for roles
     const getRoleLabel = (role: UserRole) => {
-        switch(role) {
+        switch (role) {
             case UserRole.SuperAdmin: return 'Studio HINTA Super Admin';
             case UserRole.OrgOwner: return 'Owner';
             case UserRole.OrgAdmin: return 'Admin';
@@ -168,7 +158,7 @@ const TeamSettings: React.FC<{
     }
 
     const getRoleBadgeColor = (role: UserRole) => {
-            switch(role) {
+        switch (role) {
             case UserRole.SuperAdmin: return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
             case UserRole.OrgOwner: return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
             case UserRole.OrgAdmin: return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
@@ -184,8 +174,8 @@ const TeamSettings: React.FC<{
                     <p className="text-sm text-gray-500 dark:text-gray-400">Manage access and roles for your workspace.</p>
                 </div>
                 {canManageTeam && (
-                    <button onClick={() => setIsInviteModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-brand-primary dark:bg-brand-muted text-white rounded-lg font-medium transition shadow-sm text-sm">
-                        <PlusIcon className="w-4 h-4" /> Invite Member
+                    <button onClick={() => setIsInviteModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-brand-primary dark:bg-brand-accent text-white dark:text-brand-primary rounded-lg font-medium transition shadow-sm text-sm">
+                        <Icons.Plus className="w-4 h-4" /> Invite Member
                     </button>
                 )}
             </div>
@@ -214,8 +204,8 @@ const TeamSettings: React.FC<{
                                 </td>
                                 <td className="px-6 py-4">
                                     {canManageTeam && member.id !== currentUser.id && member.role !== UserRole.OrgOwner ? (
-                                            <select 
-                                            value={member.role} 
+                                        <select
+                                            value={member.role}
                                             onChange={(e) => onUpdateRole(member.id, e.target.value as UserRole)}
                                             className="bg-transparent border border-gray-200 dark:border-gray-600 rounded px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 focus:ring-1 focus:ring-brand-muted"
                                         >
@@ -224,7 +214,7 @@ const TeamSettings: React.FC<{
                                         </select>
                                     ) : (
                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getRoleBadgeColor(member.role)}`}>
-                                            {(member.role === UserRole.OrgOwner || member.role === UserRole.SuperAdmin) && <ShieldCheckIcon className="w-3 h-3" />}
+                                            {(member.role === UserRole.OrgOwner || member.role === UserRole.SuperAdmin) && <Icons.ShieldCheck className="w-3 h-3" />}
                                             {getRoleLabel(member.role)}
                                         </span>
                                     )}
@@ -233,7 +223,7 @@ const TeamSettings: React.FC<{
                                 <td className="px-6 py-4 text-right">
                                     {canManageTeam && member.role !== UserRole.OrgOwner && member.id !== currentUser.id && (
                                         <button onClick={() => onRemoveUser(member.id)} className="text-gray-400 hover:text-red-600 transition p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
-                                            <TrashIcon className="w-4 h-4" />
+                                            <Icons.Trash className="w-4 h-4" />
                                         </button>
                                     )}
                                 </td>
@@ -243,7 +233,7 @@ const TeamSettings: React.FC<{
                 </table>
             </div>
 
-                {isInviteModalOpen && (
+            {isInviteModalOpen && (
                 <Modal onClose={() => setIsInviteModalOpen(false)}>
                     <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Invite Team Member</h2>
                     <form onSubmit={handleInviteSubmit}>
@@ -259,7 +249,7 @@ const TeamSettings: React.FC<{
                                     <option value={UserRole.OrgMember}>Member</option>
                                 </select>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded">
-                                    {inviteRole === UserRole.OrgAdmin ? 
+                                    {inviteRole === UserRole.OrgAdmin ?
                                         "Admins can invite other users, create projects, and manage team settings (excluding billing)." :
                                         "Members can only access projects they have been explicitly assigned to."
                                     }
@@ -268,7 +258,7 @@ const TeamSettings: React.FC<{
                         </div>
                         <div className="flex justify-end gap-3 mt-6">
                             <button type="button" onClick={() => setIsInviteModalOpen(false)} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Cancel</button>
-                            <button type="submit" className="px-4 py-2 text-sm bg-brand-primary dark:bg-brand-muted text-white rounded-lg hover:bg-opacity-90">Send Invitation</button>
+                            <button type="submit" className="px-4 py-2 text-sm bg-brand-primary dark:bg-brand-accent text-white dark:text-brand-primary rounded-lg hover:bg-opacity-90">Send Invitation</button>
                         </div>
                     </form>
                 </Modal>
@@ -282,7 +272,7 @@ const BillingSettings: React.FC<{ canManageBilling: boolean; onSave: () => void 
         return (
             <div className="text-center py-12">
                 <div className="bg-gray-100 dark:bg-gray-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CreditCardIcon className="w-8 h-8 text-gray-400" />
+                    <Icons.CreditCard className="w-5 h-5 text-red-600" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Restricted Access</h3>
                 <p className="text-gray-500 dark:text-gray-400 mt-2">Only the Organization Owner can manage billing and subscription details.</p>
@@ -314,7 +304,7 @@ const BillingSettings: React.FC<{ canManageBilling: boolean; onSave: () => void 
 
     return (
         <div className="space-y-8 animate-fadeIn">
-                <div>
+            <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Production Packages & Billing</h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">View your packages, manage invoice details, and subscription status.</p>
             </div>
@@ -336,12 +326,12 @@ const BillingSettings: React.FC<{ canManageBilling: boolean; onSave: () => void 
                             </div>
                         </div>
                     </div>
-                        <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-600 text-sm max-w-xs">
-                            <p className="font-semibold text-gray-800 dark:text-white mb-2">Maintenance Option</p>
-                            <p className="text-gray-600 dark:text-gray-300 text-xs leading-relaxed">
-                                Want to close the Unit Selector but keep the digital tour? Downgrade to "Maintenance Mode" for a <span className="font-bold text-brand-muted dark:text-brand-accent">50% discount</span> on the monthly fee.
-                            </p>
-                            <button className="mt-3 text-xs font-semibold text-gray-500 underline hover:text-gray-800 dark:hover:text-white">Contact support to downgrade</button>
+                    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-600 text-sm max-w-xs">
+                        <p className="font-semibold text-gray-800 dark:text-white mb-2">Maintenance Option</p>
+                        <p className="text-gray-600 dark:text-gray-300 text-xs leading-relaxed">
+                            Want to close the Unit Selector but keep the digital tour? Downgrade to "Maintenance Mode" for a <span className="font-bold text-brand-muted dark:text-brand-accent">50% discount</span> on the monthly fee.
+                        </p>
+                        <button className="mt-3 text-xs font-semibold text-gray-500 underline hover:text-gray-800 dark:hover:text-white">Contact support to downgrade</button>
                     </div>
                 </div>
             </div>
@@ -351,7 +341,7 @@ const BillingSettings: React.FC<{ canManageBilling: boolean; onSave: () => void 
                 <h3 className="font-bold text-gray-900 dark:text-white mb-4">Production Packages</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {packages.map((pkg) => (
-                        <div key={pkg.name} className={`${pkg.color} ${pkg.className || ''} rounded-xl p-6 text-white shadow-lg flex flex-col h-full relative overflow-hidden group`}>
+                        <div key={pkg.name} className={`${pkg.color} ${pkg.className || ''} rounded-xl p-6 ${pkg.name === 'SMALL' ? 'text-brand-primary' : 'text-white'} shadow-lg flex flex-col h-full relative overflow-hidden group`}>
                             <div className="relative z-10">
                                 <div className="flex justify-between items-start mb-2">
                                     <h4 className="font-bold text-lg tracking-wide">{pkg.name}</h4>
@@ -378,30 +368,30 @@ const BillingSettings: React.FC<{ canManageBilling: boolean; onSave: () => void 
 
             {/* Billing Details Form */}
             <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl p-6 shadow-sm">
-                    <h3 className="font-bold text-gray-900 dark:text-white mb-4">Billing Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <h3 className="font-bold text-gray-900 dark:text-white mb-4">Billing Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name (for Invoice)</label>
-                            <input type="text" defaultValue="HINTA AB" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg"/>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name (for Invoice)</label>
+                        <input type="text" defaultValue="HINTA AB" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg" />
                     </div>
                     <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Billing Email</label>
-                            <input type="email" defaultValue="invoice@hinta.se" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg"/>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Billing Email</label>
+                        <input type="email" defaultValue="invoice@hinta.se" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg" />
                     </div>
                     <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Org Number / VAT ID</label>
-                            <input type="text" defaultValue="556000-0000" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg"/>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Org Number / VAT ID</label>
+                        <input type="text" defaultValue="556000-0000" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg" />
                     </div>
                     <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Billing Address</label>
-                            <textarea rows={2} defaultValue="Nordic Way 42, 111 22 Stockholm" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg"/>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Billing Address</label>
+                        <textarea rows={2} defaultValue="Nordic Way 42, 111 22 Stockholm" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg" />
                     </div>
-                    </div>
-                    <div className="mt-4 flex justify-end">
-                    <button onClick={onSave} className="px-6 py-2 bg-brand-primary dark:bg-brand-muted text-white rounded-lg font-medium transition shadow-sm">
+                </div>
+                <div className="mt-4 flex justify-end">
+                    <button onClick={onSave} className="px-6 py-2 bg-brand-primary dark:bg-brand-accent text-white dark:text-brand-primary rounded-lg font-medium transition shadow-sm">
                         Save Billing Details
                     </button>
-                    </div>
+                </div>
             </div>
 
             <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
@@ -418,7 +408,7 @@ const BillingSettings: React.FC<{ canManageBilling: boolean; onSave: () => void 
                             <th className="px-6 py-3 text-right">Download</th>
                         </tr>
                     </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                         <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
                             <td className="px-6 py-4">INV-2023-001</td>
                             <td className="px-6 py-4">Oct 26, 2023</td>
@@ -479,7 +469,7 @@ const DataSettings: React.FC<{ addToast: any }> = ({ addToast }) => {
             }
         };
         reader.readAsText(file);
-        e.target.value = ''; 
+        e.target.value = '';
     };
 
     const handleReset = () => {
@@ -506,7 +496,7 @@ const DataSettings: React.FC<{ addToast: any }> = ({ addToast }) => {
                 {/* Export Card */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col">
                     <div className="bg-green-50 dark:bg-green-900/20 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                        <DownloadIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
+                        <Icons.Download className="w-6 h-6 text-green-600 dark:text-green-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Export Data</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 mb-6 flex-grow">
@@ -520,21 +510,21 @@ const DataSettings: React.FC<{ addToast: any }> = ({ addToast }) => {
                 {/* Import Card */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col">
                     <div className="bg-blue-50 dark:bg-blue-900/20 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                        <UploadIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                        <Icons.Upload className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Import Data</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 mb-6 flex-grow">
-                        Upload a previously exported JSON file to overwrite current data. <br/><strong>Warning: Current data will be replaced.</strong>
+                        Upload a previously exported JSON file to overwrite current data. <br /><strong>Warning: Current data will be replaced.</strong>
                     </p>
-                    <button onClick={() => fileInputRef.current?.click()} className="w-full py-2 px-4 bg-brand-primary dark:bg-brand-muted text-white font-medium rounded-lg hover:bg-opacity-90 transition shadow-sm">
+                    <button onClick={() => fileInputRef.current?.click()} className="w-full py-2 px-4 bg-brand-primary dark:bg-brand-accent text-white dark:text-brand-primary font-medium rounded-lg hover:bg-opacity-90 transition shadow-sm">
                         Upload & Restore
                     </button>
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        className="hidden" 
-                        accept=".json" 
-                        onChange={handleImport} 
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept=".json"
+                        onChange={handleImport}
                     />
                 </div>
             </div>
@@ -584,24 +574,24 @@ export const Settings: React.FC<SettingsProps> = ({ users: propUsers, currentUse
     };
 
     const handleRoleChange = (userId: string, newRole: UserRole) => {
-        setTeam(prev => prev.map(u => u.id === userId ? {...u, role: newRole} : u));
+        setTeam(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
         addToast("User role updated");
     };
 
     const handleRemoveUser = (userId: string) => {
-        if(window.confirm("Remove this user from the organization?")) {
-                setTeam(prev => prev.filter(u => u.id !== userId));
-                addToast("User removed", 'info');
+        if (window.confirm("Remove this user from the organization?")) {
+            setTeam(prev => prev.filter(u => u.id !== userId));
+            addToast("User removed", 'info');
         }
     };
 
     const handleInvite = (email: string, role: UserRole) => {
-        addToast(`Invitation sent to ${email}`);
+        addToast(`Invitation sent to ${email} `);
     };
 
     return (
         <div className="p-4 sm:p-8 max-w-5xl mx-auto w-full">
-             <header className="mb-8">
+            <header className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white uppercase tracking-tighter">Settings</h1>
             </header>
 
@@ -609,21 +599,20 @@ export const Settings: React.FC<SettingsProps> = ({ users: propUsers, currentUse
                 {/* Sidebar Navigation */}
                 <nav className="w-full md:w-64 flex-shrink-0 space-y-1">
                     {[
-                        { id: 'profile', label: 'Profile', icon: ProfileIcon },
-                        { id: 'organization', label: 'Organization', icon: BuildingIcon },
-                        { id: 'team', label: 'Team & Roles', icon: UsersIcon },
-                        { id: 'billing', label: 'Billing & Plans', icon: CreditCardIcon },
-                        { id: 'security', label: 'Security', icon: KeyIcon },
-                        { id: 'data', label: 'Data Management', icon: DatabaseIcon },
+                        { id: 'profile', label: 'Profile', icon: Icons.Profile },
+                        { id: 'organization', label: 'Organization', icon: Icons.Building },
+                        { id: 'team', label: 'Team & Roles', icon: Icons.Users },
+                        { id: 'billing', label: 'Billing & Plans', icon: Icons.CreditCard },
+                        { id: 'security', label: 'Security', icon: Icons.Key },
+                        { id: 'data', label: 'Data Management', icon: Icons.Database },
                     ].map((item) => (
                         <button
                             key={item.id}
                             onClick={() => setActiveTab(item.id as SettingsTab)}
-                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                                activeTab === item.id 
-                                ? 'bg-brand-accent/20 dark:bg-brand-primary text-gray-900 dark:text-white border-l-4 border-brand-primary dark:border-brand-accent' 
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === item.id
+                                ? 'bg-brand-accent/20 dark:bg-brand-primary text-gray-900 dark:text-white border-l-4 border-brand-primary dark:border-brand-accent'
                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50'
-                            }`}
+                                }`}
                         >
                             <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-brand-primary dark:text-brand-accent' : 'text-gray-400'}`} />
                             {item.label}
@@ -634,32 +623,32 @@ export const Settings: React.FC<SettingsProps> = ({ users: propUsers, currentUse
                 {/* Content Area */}
                 <div className="flex-1 min-w-0">
                     {activeTab === 'profile' && (
-                        <ProfileSettings 
-                            user={currentUser} 
-                            onSave={handleUpdateUser} 
+                        <ProfileSettings
+                            user={currentUser}
+                            onSave={handleUpdateUser}
                         />
                     )}
                     {activeTab === 'organization' && (
-                        <OrganizationSettings 
-                            canManageTeam={canManageTeam} 
-                            canDeleteOrg={canDeleteOrg} 
-                            onSave={() => addToast("Organization details updated")} 
+                        <OrganizationSettings
+                            canManageTeam={canManageTeam}
+                            canDeleteOrg={canDeleteOrg}
+                            onSave={() => addToast("Organization details updated")}
                         />
                     )}
                     {activeTab === 'team' && (
-                        <TeamSettings 
-                            team={team} 
-                            currentUser={currentUser} 
-                            canManageTeam={canManageTeam} 
-                            onUpdateRole={handleRoleChange} 
+                        <TeamSettings
+                            team={team}
+                            currentUser={currentUser}
+                            canManageTeam={canManageTeam}
+                            onUpdateRole={handleRoleChange}
                             onRemoveUser={handleRemoveUser}
                             onInvite={handleInvite}
                         />
                     )}
                     {activeTab === 'billing' && (
-                        <BillingSettings 
-                            canManageBilling={canManageBilling} 
-                            onSave={() => addToast("Billing details updated")} 
+                        <BillingSettings
+                            canManageBilling={canManageBilling}
+                            onSave={() => addToast("Billing details updated")}
                         />
                     )}
                     {activeTab === 'data' && (
@@ -667,7 +656,7 @@ export const Settings: React.FC<SettingsProps> = ({ users: propUsers, currentUse
                     )}
                     {activeTab === 'security' && (
                         <div className="text-center py-12 text-gray-500">
-                            <KeyIcon className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                            <Icons.Key className="w-5 h-5 text-yellow-600" />
                             <h3 className="text-lg font-medium text-gray-900 dark:text-white">Security Settings</h3>
                             <p>Password change and 2FA settings would go here.</p>
                         </div>

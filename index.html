@@ -1,225 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HINTA – Interactive Real Estate Visualization</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon/icon%20black.svg" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              brand: {
-                primary: '#1a1a1a', // Matte Black
-                accent: '#e5d0b1',  // Warm Beige / Oak
-                muted: '#4b5563',   // Muted Blue
-              },
-              gray: {
-                750: '#2d3748',
-                850: '#1a202c',
-                950: '#1a1a1a',
-              }
-            },
-            borderRadius: {
-              '4xl': '2rem',
-              '5xl': '3rem',
-            },
-            backdropBlur: {
-              'xs': '2px',
-            }
-          }
-        }
-      }
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Pannellum Library for 360 Panoramas -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
-    
-    <style>
-      body {
-        font-family: 'Poppins', sans-serif;
-        margin: 0;
-        overflow-x: hidden;
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HINTA – Interactive Real Estate Visualization</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon/icon%20black.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <!-- Pannellum Library for 360 Panoramas -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      overflow-x: hidden;
+    }
+
+    /* Custom Liquid Scrollbar */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+    }
+
+    .dark * {
+      scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      background-clip: content-box;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.2);
+      background-clip: content-box;
+    }
+
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+      background-clip: content-box;
+    }
+
+    /* Liquid Background Mesh */
+    .mesh-gradient {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      background-color: #f8fafc;
+      background-image:
+        radial-gradient(at 0% 0%, hsla(142, 5%, 95%, 1) 0, transparent 50%),
+        radial-gradient(at 50% 0%, hsla(210, 10%, 92%, 1) 0, transparent 50%),
+        radial-gradient(at 100% 0%, hsla(330, 5%, 95%, 1) 0, transparent 50%),
+        radial-gradient(at 0% 100%, hsla(200, 5%, 95%, 1) 0, transparent 50%),
+        radial-gradient(at 100% 100%, hsla(160, 5%, 95%, 1) 0, transparent 50%);
+      filter: blur(80px);
+      opacity: 0.6;
+    }
+
+    .dark .mesh-gradient {
+      background-color: #0d1117;
+      background-image:
+        radial-gradient(at 0% 0%, hsla(210, 10%, 15%, 1) 0, transparent 50%),
+        radial-gradient(at 50% 0%, hsla(210, 10%, 10%, 1) 0, transparent 50%),
+        radial-gradient(at 100% 0%, hsla(210, 10%, 15%, 1) 0, transparent 50%),
+        radial-gradient(at 0% 100%, hsla(210, 10%, 10%, 1) 0, transparent 50%),
+        radial-gradient(at 100% 100%, hsla(210, 10%, 15%, 1) 0, transparent 50%);
+      opacity: 1;
+    }
+
+    /* Apple Liquid Glass + Material Design Hybrid */
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      overflow: hidden;
+      /* Material Design elevation */
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .dark .glass-panel {
+      background: rgba(26, 26, 26, 0.7);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(12px) saturate(180%);
+      -webkit-backdrop-filter: blur(12px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      /* Material Design transition */
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      /* Material Design elevation level 2 */
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .dark .glass-card {
+      background: rgba(40, 44, 52, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .glass-card:hover {
+      background: rgba(255, 255, 255, 0.6);
+      /* Material Design elevation level 8 on hover */
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .dark .glass-card:hover {
+      background: rgba(50, 54, 62, 0.6);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Material Design Ripple Effect */
+    .ripple {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ripple::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.5);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .ripple:active::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
       }
 
-      /* Custom Liquid Scrollbar */
-      * {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
-      }
-
-      .dark * {
-        scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-      }
-
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      ::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.1);
-        border-radius: 10px;
-        border: 2px solid transparent;
-        background-clip: content-box;
-      }
-
-      .dark ::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.1);
-        background-clip: content-box;
-      }
-
-      ::-webkit-scrollbar-thumb:hover {
-        background: rgba(0, 0, 0, 0.2);
-        background-clip: content-box;
-      }
-
-      .dark ::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.2);
-        background-clip: content-box;
-      }
-
-      /* Liquid Background Mesh */
-      .mesh-gradient {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: -1;
-        background-color: #f8fafc;
-        background-image: 
-          radial-gradient(at 0% 0%, hsla(142,5%,95%,1) 0, transparent 50%), 
-          radial-gradient(at 50% 0%, hsla(210,10%,92%,1) 0, transparent 50%), 
-          radial-gradient(at 100% 0%, hsla(330,5%,95%,1) 0, transparent 50%), 
-          radial-gradient(at 0% 100%, hsla(200,5%,95%,1) 0, transparent 50%), 
-          radial-gradient(at 100% 100%, hsla(160,5%,95%,1) 0, transparent 50%);
-        filter: blur(80px);
-        opacity: 0.6;
-      }
-
-      .dark .mesh-gradient {
-        background-color: #0d1117;
-        background-image: 
-          radial-gradient(at 0% 0%, hsla(210,10%,15%,1) 0, transparent 50%), 
-          radial-gradient(at 50% 0%, hsla(210,10%,10%,1) 0, transparent 50%), 
-          radial-gradient(at 100% 0%, hsla(210,10%,15%,1) 0, transparent 50%), 
-          radial-gradient(at 0% 100%, hsla(210,10%,10%,1) 0, transparent 50%), 
-          radial-gradient(at 100% 100%, hsla(210,10%,15%,1) 0, transparent 50%);
+      to {
         opacity: 1;
       }
+    }
 
-      /* Apple Liquid Glass + Material Design Hybrid */
-      .glass-panel {
-        background: rgba(255, 255, 255, 0.65);
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        overflow: hidden;
-        /* Material Design elevation */
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.08);
+    @keyframes slideInUp {
+      from {
+        transform: translateY(100%);
       }
 
-      .dark .glass-panel {
-        background: rgba(26, 26, 26, 0.7);
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
+      to {
+        transform: translateY(0);
       }
+    }
 
-      .glass-card {
-        background: rgba(255, 255, 255, 0.4);
-        backdrop-filter: blur(12px) saturate(180%);
-        -webkit-backdrop-filter: blur(12px) saturate(180%);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        /* Material Design transition */
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        overflow: hidden;
-        /* Material Design elevation level 2 */
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.08);
-      }
+    .animate-fadeIn {
+      animation: fadeIn 0.3s ease-out;
+    }
 
-      .dark .glass-card {
-        background: rgba(40, 44, 52, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
-      }
-
-      .glass-card:hover {
-        background: rgba(255, 255, 255, 0.6);
-        /* Material Design elevation level 8 on hover */
-        transform: translateY(-4px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08);
-      }
-
-      .dark .glass-card:hover {
-        background: rgba(50, 54, 62, 0.6);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.3);
-      }
-
-      /* Material Design Ripple Effect */
-      .ripple {
-        position: relative;
-        overflow: hidden;
-      }
-
-      .ripple::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.5);
-        transform: translate(-50%, -50%);
-        transition: width 0.6s, height 0.6s;
-      }
-
-      .ripple:active::before {
-        width: 300px;
-        height: 300px;
-      }
-
-      /* Animations */
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-        }
-        to {
-          opacity: 1;
-        }
-      }
-
-      @keyframes slideInUp {
-        from {
-          transform: translateY(100%);
-        }
-        to {
-          transform: translateY(0);
-        }
-      }
-
-      .animate-fadeIn {
-        animation: fadeIn 0.3s ease-out;
-      }
-
-      .animate-slideInUp {
-        animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-    </style>
-    <script type="importmap">
+    .animate-slideInUp {
+      animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+  <script type="importmap">
     {
       "imports": {
         "react": "https://aistudiocdn.com/react@^19.2.0",
@@ -231,9 +207,11 @@
     </script>
   <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-slate-50 dark:bg-slate-950 transition-colors duration-500">
-    <div class="mesh-gradient"></div>
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+
+<body class="bg-slate-50 dark:bg-slate-950 transition-colors duration-500">
+  <div class="mesh-gradient"></div>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>

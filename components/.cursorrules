@@ -5,7 +5,9 @@ You are a Senior Frontend Architect building "Studio Hinta" – a premium SaaS f
 - **Frontend:** React 19, Vite, TypeScript.
 - **Styling:** Tailwind CSS.
 - **Backend:** Supabase.
-- **Icons:** Custom SVG in `/components/icons`.
+- **Icons:** Consolidate icons into `Icons.tsx` or use Lucide. Avoid redundant SVG files.
+- **Tailwind:** Native installation (No CDN). Use curated color tokens.
+
 
 # Design System (CRITICAL)
 - **Primary Source:** Always refer to `@design-system.md` for colors, typography, and component styling.
@@ -16,9 +18,20 @@ You are a Senior Frontend Architect building "Studio Hinta" – a premium SaaS f
   - Interactive: Hover scale 1.02, Active scale 0.95.
 
 # Coding Standards
-1.  **TypeScript:** No `any`. Define interfaces.
+1.  **TypeScript:** No `any`. Define interfaces. Use typed error handlers.
 2.  **Coordinates:** All hotspots MUST use **Percentage (0-100%)**.
-3.  **Routing:** Manual routing (`window.location`).
+3.  **Routing:** Migrate to **React Router** or **Tanstack Router** for complex navigation. Avoid `window.location`.
+4.  **Architecture:**
+    - **No Monoliths**: Split components > 300 lines. Separate logic into hooks.
+    - **Domain Driven**: Group components by feature (e.g., `viewer/`, `project/`).
+5.  **Performance**:
+    - Use `React.memo` and `useMemo` for heavy components/calculations.
+    - Avoid unnecessary re-renders in the Viewer canvas.
+6.  **Security (CRITICAL)**:
+    - **NO HARDCODED PASSWORDS**.
+    - Implement Supabase Auth for sessions. No insecure `localStorage` auth.
+    - Use Row Level Security (RLS) with user-based filtering.
+
 
 # Token Optimization
 - **BE CONCISE:** Code only.
