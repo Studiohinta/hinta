@@ -12,6 +12,7 @@ import { UploadIcon } from './icons/UploadIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { PanoramaViewer } from './PanoramaViewer';
 import { PencilIcon } from './icons/PencilIcon';
+import { uploadProjectAsset } from '../lib/supabaseStorage';
 
 interface MediaGalleryProps {
     project: Project;
@@ -36,6 +37,7 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ project, onAddAsset,
     const [assetUrl, setAssetUrl] = useState('');
     const [assetFile, setAssetFile] = useState<File | null>(null);
     const [filePreview, setFilePreview] = useState<string | null>(null);
+    const [isUploadingAsset, setIsUploadingAsset] = useState(false);
 
     const filteredAssets = (project.assets || []).filter(asset => filter === 'all' || asset.type === filter);
 
@@ -62,12 +64,40 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ project, onAddAsset,
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
-        const url = assetType === 'upload' && filePreview ? filePreview : assetUrl;
-        
-        if (url && assetTitle) {
+        if (!assetTitle) return;
+
+        let url: string;
+        if (assetType === 'upload' && assetFile) {
+            setIsUploadingAsset(true);
+            try {
+                url = await uploadProjectAsset(assetFile, project.id);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Okänt fel';
+                console.error('Error uploading asset:', error);
+                alert(`Kunde inte ladda upp bilden: ${errorMessage}\n\nKontrollera att bucketen "project-assets" finns i Supabase och att policies är korrekt konfigurerade.`);
+                setIsUploadingAsset(false);
+                return;
+            }
+            setIsUploadingAsset(false);
+        } else if (assetType === 'upload' && editingAsset && assetFile) {
+            setIsUploadingAsset(true);
+            try {
+                url = await uploadProjectAsset(assetFile, project.id);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Okänt fel';
+                console.error('Error uploading asset:', error);
+                alert(`Kunde inte ladda upp bilden: ${errorMessage}`);
+                setIsUploadingAsset(false);
+                return;
+            }
+            setIsUploadingAsset(false);
+        } else {
+            url = assetType === 'upload' && filePreview ? filePreview : assetUrl;
+        }
+
+        if (url) {
             if (editingAsset) {
                 onUpdateAsset({
                     ...editingAsset,
@@ -314,8 +344,8 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ project, onAddAsset,
 
                         <div className="flex justify-end gap-3 mt-6">
                             <button type="button" onClick={isEditModalOpen ? closeEditModal : closeAddModal} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Avbryt</button>
-                            <button type="submit" className="px-4 py-2 text-sm font-medium bg-[#5C7263] text-white rounded-lg hover:bg-opacity-90">
-                                {isEditModalOpen ? 'Spara ändringar' : 'Lägg till'}
+                            <button type="submit" disabled={isUploadingAsset} className="px-4 py-2 text-sm font-medium bg-[#5C7263] text-white rounded-lg hover:bg-opacity-90 disabled:opacity-70 disabled:cursor-not-allowed">
+                                {isUploadingAsset ? 'Laddar upp...' : (isEditModalOpen ? 'Spara ändringar' : 'Lägg till')}
                             </button>
                         </div>
                     </form>

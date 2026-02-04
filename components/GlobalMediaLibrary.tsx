@@ -11,6 +11,7 @@ import { UploadIcon } from './icons/UploadIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { FilterIcon } from './icons/FilterIcon';
 import { PanoramaViewer } from './PanoramaViewer';
+import { uploadProjectAsset } from '../lib/supabaseStorage';
 
 interface GlobalMediaLibraryProps {
     projects: Project[];
@@ -34,6 +35,7 @@ export const GlobalMediaLibrary: React.FC<GlobalMediaLibraryProps> = ({ projects
     const [newAssetUrl, setNewAssetUrl] = useState('');
     const [newAssetFile, setNewAssetFile] = useState<File | null>(null);
     const [filePreview, setFilePreview] = useState<string | null>(null);
+    const [isUploadingAsset, setIsUploadingAsset] = useState(false);
 
     // Aggregate all assets with project info
     const allAssets = useMemo(() => {
@@ -67,16 +69,31 @@ export const GlobalMediaLibrary: React.FC<GlobalMediaLibraryProps> = ({ projects
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!targetProjectId) return;
+        if (!targetProjectId || !newAssetTitle) return;
 
         const targetProject = projects.find(p => p.id === targetProjectId);
         if (!targetProject) return;
 
-        const url = addType === 'upload' && filePreview ? filePreview : newAssetUrl;
-        
-        if (url && newAssetTitle) {
+        let url: string;
+        if (addType === 'upload' && newAssetFile) {
+            setIsUploadingAsset(true);
+            try {
+                url = await uploadProjectAsset(newAssetFile, targetProjectId);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Okänt fel';
+                console.error('Error uploading asset:', error);
+                alert(`Kunde inte ladda upp filen: ${errorMessage}\n\nKontrollera att bucketen "project-assets" finns i Supabase och att policies är korrekt konfigurerade.`);
+                setIsUploadingAsset(false);
+                return;
+            }
+            setIsUploadingAsset(false);
+        } else {
+            url = addType === 'upload' && filePreview ? filePreview : newAssetUrl;
+        }
+
+        if (url) {
             const newAsset: ProjectAsset = {
                 id: `asset_${Date.now()}`,
                 projectId: targetProject.id,
@@ -337,7 +354,9 @@ export const GlobalMediaLibrary: React.FC<GlobalMediaLibraryProps> = ({ projects
 
                         <div className="flex justify-end gap-3 mt-6">
                             <button type="button" onClick={closeAddModal} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Cancel</button>
-                            <button type="submit" disabled={!targetProjectId || (addType === 'upload' ? !newAssetFile : !newAssetUrl)} className="px-4 py-2 text-sm font-medium bg-[#5C7263] text-white rounded-lg hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">Add Asset</button>
+                            <button type="submit" disabled={!targetProjectId || (addType === 'upload' ? !newAssetFile : !newAssetUrl) || isUploadingAsset} className="px-4 py-2 text-sm font-medium bg-[#5C7263] text-white rounded-lg hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isUploadingAsset ? 'Laddar upp...' : 'Add Asset'}
+                            </button>
                         </div>
                     </form>
                 </Modal>

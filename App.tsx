@@ -618,10 +618,11 @@ function AdminDashboard() {
 
     switch (page) {
       case 'editor':
-        if (selectedProject && selectedView) {
+        if (selectedProject && selectedView && selectedViewId) {
             return <Editor 
                 project={selectedProject}
                 view={selectedView}
+                viewId={selectedViewId}
                 viewHotspots={viewHotspots}
                 allProjectHotspots={projectHotspots}
                 onSave={handleSaveHotspots}

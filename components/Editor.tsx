@@ -22,6 +22,8 @@ import { ChevronDoubleRightIcon } from './icons/ChevronDoubleRightIcon';
 interface EditorProps {
     project: Project;
     view: View;
+    /** Canonical view id from route (selectedViewId). Use this for save to avoid stale view reference. */
+    viewId: string;
     viewHotspots: Hotspot[];
     allProjectHotspots: Hotspot[];
     onSave: (viewId: string, hotspots: Hotspot[]) => void;
@@ -76,6 +78,7 @@ const useHistoryState = <T,>(initialState: T) => {
 export const Editor: React.FC<EditorProps> = ({ 
     project, 
     view, 
+    viewId: canonicalViewId, 
     viewHotspots, 
     allProjectHotspots,
     onSave, 
@@ -107,17 +110,13 @@ export const Editor: React.FC<EditorProps> = ({
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
-  // Track previous view.id to only reset when it actually changes
-  const prevViewIdRef = useRef<string>(view.id);
+  // Track previous canonical view id to only reset when route actually changes
+  const prevViewIdRef = useRef<string>(canonicalViewId);
 
-  // Reset view state when view.id changes, but only if not drawing
+  // Reset view state when canonical view id (route) changes, but only if not drawing
   useEffect(() => {
-    // Only reset if view.id actually changed
-    if (prevViewIdRef.current !== view.id) {
-      // Update the ref immediately
-      prevViewIdRef.current = view.id;
-      
-      // Only reset if we're not currently drawing
+    if (prevViewIdRef.current !== canonicalViewId) {
+      prevViewIdRef.current = canonicalViewId;
       if (!isDrawingRef.current && !startDrawingRef.current) {
         resetHotspotsHistory(viewHotspots);
         setSelectedHotspotId(null);
@@ -127,7 +126,7 @@ export const Editor: React.FC<EditorProps> = ({
         setFitViewToggle(v => !v);
       }
     }
-  }, [view.id, viewHotspots, resetHotspotsHistory]);
+  }, [canonicalViewId, viewHotspots, resetHotspotsHistory]);
 
   const selectedHotspot = useMemo(
     () => hotspots.find(h => h.id === selectedHotspotId),
@@ -178,7 +177,7 @@ export const Editor: React.FC<EditorProps> = ({
 
     const newHotspot: Hotspot = {
       id: `hotspot_${new Date().getTime()}`,
-      viewId: view.id,
+      viewId: canonicalViewId,
       label: `Area ${hotspots.length + 1}`,
       type: 'polygon',
       coordinates: drawingPoints,
@@ -193,7 +192,7 @@ export const Editor: React.FC<EditorProps> = ({
     isDrawingRef.current = false;
     startDrawingRef.current = false; // Reset the flag as well
     setSelectedHotspotId(newHotspot.id);
-  }, [drawingPoints, hotspots.length, view.id, setHotspotsHistory]);
+  }, [drawingPoints, hotspots.length, canonicalViewId, setHotspotsHistory]);
   
   const cancelDrawing = useCallback(() => {
     setIsDrawing(false);
@@ -216,7 +215,7 @@ export const Editor: React.FC<EditorProps> = ({
         } else {
              const newHotspot: Hotspot = {
                 id: `hotspot_${new Date().getTime()}`,
-                viewId: view.id,
+                viewId: canonicalViewId,
                 label: `${drawingType === 'info' ? 'Info Point' : 'Camera Point'} ${hotspots.length + 1}`,
                 type: drawingType,
                 coordinates: [coords],
@@ -276,7 +275,7 @@ export const Editor: React.FC<EditorProps> = ({
   }, [hotspots, viewHotspots]);
 
   const handleSave = useCallback(() => {
-    onSave(view.id, hotspots);
+    onSave(canonicalViewId, hotspots);
     resetHotspotsHistory(hotspots);
     // Reset drawing state after save
     setIsDrawing(false);
@@ -284,7 +283,7 @@ export const Editor: React.FC<EditorProps> = ({
     startDrawingRef.current = false;
     setDrawingPoints([]);
     setSelectedHotspotId(null);
-  }, [onSave, view.id, hotspots, resetHotspotsHistory]);
+  }, [onSave, canonicalViewId, hotspots, resetHotspotsHistory]);
   
   const handleZoom = (direction: 'in' | 'out') => {
     const factor = direction === 'in' ? 1.2 : 1 / 1.2;
